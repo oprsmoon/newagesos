@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#b91c1c"/>
+<meta name="description" content="V-CIN Suraksha — Real-time personal safety and cyber fraud response PWA for Indian citizens"/>
+<title>Suraksha – V-CIN Safety App</title>
+<link rel="manifest" href="manifest.json"/>
+
+<!-- UX4G Government Design System 3.0 -->
+<link rel="stylesheet" href="https://cdn.ux4g.gov.in/UX4G@3.0.18/index.css"/>
+
+<!-- Leaflet Maps -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<!-- PeerJS Open Source WebRTC Engine -->
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+<!-- Custom V-CIN Styles -->
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ROOM JOIN OVERLAY — shown before app renders
+════════════════════════════════════════════════════════════════ -->
+<div id="joinOverlay" class="vcin-overlay">
+  <div class="vcin-join-card">
+    <div class="vcin-logo-wrap">
+      <img src="assets/vcin-logo.svg" alt="VCIN Official Logo" class="vcin-brand-logo-img"/>
+      <h1 class="vcin-brand">V-CIN <span>Suraksha</span></h1>
+      <p class="vcin-tagline">Verified Civil Intelligence Network</p>
+      <div class="vcin-brand-slogan">
+        <span class="vcin-slogan-verify">VERIFY</span> •
+        <span class="vcin-slogan-connect">CONNECT</span> •
+        <span class="vcin-slogan-protect">PROTECT</span>
+      </div>
+    </div>
+
+    <div class="vcin-join-form">
+      <label class="vcin-label">Your Name</label>
+      <input id="joinName" class="vcin-input" type="text" placeholder="Enter your name" autocomplete="given-name" maxlength="30"/>
+
+      <label class="vcin-label" style="margin-top:18px">4-Digit Room Code</label>
+      <div class="vcin-otp-row" style="display:flex;flex-direction:row;gap:8px;width:100%;box-sizing:border-box;margin-bottom:12px">
+        <input class="vcin-otp-box" id="otp0" maxlength="4" type="text" inputmode="numeric" pattern="[0-9]" placeholder="X" style="flex:1 1 0;width:0;min-width:0;box-sizing:border-box"/>
+        <input class="vcin-otp-box" id="otp1" maxlength="4" type="text" inputmode="numeric" pattern="[0-9]" placeholder="X" style="flex:1 1 0;width:0;min-width:0;box-sizing:border-box"/>
+        <input class="vcin-otp-box" id="otp2" maxlength="4" type="text" inputmode="numeric" pattern="[0-9]" placeholder="X" style="flex:1 1 0;width:0;min-width:0;box-sizing:border-box"/>
+        <input class="vcin-otp-box" id="otp3" maxlength="4" type="text" inputmode="numeric" pattern="[0-9]" placeholder="X" style="flex:1 1 0;width:0;min-width:0;box-sizing:border-box"/>
+      </div>
+
+      <p class="vcin-hint">Enter the code shared by the Operator, or generate one below.</p>
+
+      <button type="button" id="joinBtn" class="vcin-btn-primary" style="opacity:1;cursor:pointer" onclick="handleCitizenJoin(event)">Join Room →</button>
+      <button type="button" id="generateCodeBtn" class="vcin-btn-secondary" onclick="generateNewRoomCode(event)">Generate New Code (Operator)</button>
+    </div>
+
+    <div class="vcin-join-footer">
+      <span class="vcin-badge-gov">🇮🇳 Demo Mode — Citizen App</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JITSI CONFERENCE OVERLAY
+════════════════════════════════════════════════════════════════ -->
+<div id="jitsiOverlay" class="vcin-overlay hidden">
+  <div class="vcin-jitsi-card">
+    <div class="vcin-jitsi-header">
+      <span class="vcin-jitsi-title">📹 V-CIN Conference Call</span>
+      <div class="vcin-call-timer" id="callTimerDisplay">3:00</div>
+      <button class="vcin-btn-danger-sm" id="leaveCallBtn">📵 Leave</button>
+    </div>
+    <div id="jitsiContainer" style="width:100%;height:calc(100% - 56px);border-radius:0 0 16px 16px;overflow:hidden;"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     GOLDEN HOUR MODAL
+════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════
+     GOLDEN HOUR MODAL (Image 4 Design)
+════════════════════════════════════════════════════════════════ -->
+<div id="goldenHourModal" class="vcin-overlay hidden">
+  <div class="vcin-modal-card vcin-gh-modal-card">
+    <button class="vcin-modal-close" id="closeGoldenHour">✕</button>
+
+    <div class="vcin-gh-top-banner">
+      <span class="vcin-pulse-dot"></span>
+      <strong>GOLDEN HOUR ACTIVE</strong>
+      <p>Every second counts. Act now to save your money.</p>
+    </div>
+
+    <!-- Digital Countdown Clock (Image 4) -->
+    <div class="vcin-gh-clock-box">
+      <div class="vcin-gh-digital-timer" id="ghTimerText">59:42</div>
+      <div class="vcin-gh-timer-labels">
+        <span>MINUTES</span>
+        <span>SECONDS</span>
+      </div>
+    </div>
+
+    <!-- Input fields (shown before start) -->
+    <div id="ghInputSection">
+      <input id="ghAmount" class="vcin-input" type="number" placeholder="Amount lost (₹)" style="margin-bottom:10px"/>
+      <input id="ghBank"   class="vcin-input" type="text"   placeholder="Bank / payment app name"/>
+      <button id="startGoldenHourBtn" class="vcin-btn-warning" style="margin-top:14px;width:100%">⚡ Start Golden Hour Rescue</button>
+    </div>
+
+    <!-- 4 Guided Steps (Image 4) -->
+    <div id="ghChecklist" class="hidden">
+      <div class="vcin-gh-stepper-header">
+        <span>Step 1 of 4</span>
+        <span>Follow all steps in order</span>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="vcin-gh-card-step vcin-step-active" id="ghStep1">
+        <div class="vcin-step-header">
+          <span class="vcin-step-num-badge">1</span>
+          <div>
+            <strong>Call Bank Fraud Helpline</strong>
+            <p>1800-11-2211 · Report immediately to block further transactions</p>
+          </div>
+        </div>
+        <div class="vcin-step-action-row">
+          <a href="tel:1800112211" class="vcin-btn-success-sm">📞 TAP TO CALL</a>
+          <span class="vcin-badge vcin-badge-success">High Priority</span>
+          <button class="vcin-step-done" data-step="1">✓ Done</button>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="vcin-gh-card-step" id="ghStep2">
+        <div class="vcin-step-header">
+          <span class="vcin-step-num-badge">2</span>
+          <div>
+            <strong>Call 1930 National Helpline</strong>
+            <p>Report cyber crime to National Helpline</p>
+          </div>
+        </div>
+        <div class="vcin-step-action-row">
+          <a href="tel:1930" class="vcin-btn-danger-sm">📞 TAP TO CALL 1930</a>
+          <button class="vcin-step-done" data-step="2">✓ Done</button>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="vcin-gh-card-step" id="ghStep3">
+        <div class="vcin-step-header">
+          <span class="vcin-step-num-badge">3</span>
+          <div>
+            <strong>File NCRP Complaint</strong>
+            <p>cybercrime.gov.in · Detailed complaint portal</p>
+          </div>
+        </div>
+        <div class="vcin-step-action-row">
+          <button id="viewDraftBtn" class="vcin-btn-secondary-sm">📝 View NCRP Draft</button>
+          <button class="vcin-step-done" data-step="3">✓ Done</button>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="vcin-gh-card-step" id="ghStep4">
+        <div class="vcin-step-header">
+          <span class="vcin-step-num-badge">4</span>
+          <div>
+            <strong>Auto Evidence Package</strong>
+            <p>SHA-256 evidence hash generated for legal proof</p>
+            <code class="vcin-hash" id="ghHashDisplay">—</code>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hindi Script Readout Box (Image 4) -->
+      <div class="vcin-gh-script-box">
+        <div class="vcin-script-header">
+          <span>💬 क्या बोलें? (हिंदी में)</span>
+          <button id="ghSpeakBtn" class="vcin-btn-icon-sm">🔊 सुनें</button>
+        </div>
+        <p class="vcin-script-text">
+          "मेरा अकाउंट से फ्रॉड हुआ है. कृपया मेरा खाता तुरंत ब्लॉक करें और इस नंबर पर हुई सभी ट्रांजेक्शन की जानकारी दें।"
+        </p>
+      </div>
+    </div>
+
+    <div id="ghOperatorBanner" class="vcin-ok-banner hidden">✅ Operator Acknowledged — Case ID: <span id="ghCaseId"></span></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     VICTIM GUARDIAN RATING MODAL
+════════════════════════════════════════════════════════════════ -->
+<div id="victimGuardianRatingModal" class="vcin-rating-modal-overlay hidden">
+  <div class="vcin-rating-modal">
+    <button class="vcin-modal-close-btn" onclick="closeVictimRatingModal()">✕</button>
+
+    <div class="vcin-rating-hero-header">
+      <div style="font-size:2.2rem;margin-bottom:6px">🤝</div>
+      <div class="vcin-rating-hero-title">Rate Your Community Guardian</div>
+      <p class="vcin-muted" style="font-size:0.8rem;margin-top:4px">
+        Your rating helps increase <strong id="vicRateGuardianName" style="color:var(--vcin-primary)">Guardian</strong>'s Civic Trust Score (CTS)!
+      </p>
+    </div>
+
+    <!-- Star Rating Selector -->
+    <div class="vcin-stars-container">
+      <div class="vcin-star-rating" id="victimStarRating">
+        <span class="vcin-star active" data-val="1">★</span>
+        <span class="vcin-star active" data-val="2">★</span>
+        <span class="vcin-star active" data-val="3">★</span>
+        <span class="vcin-star active" data-val="4">★</span>
+        <span class="vcin-star active" data-val="5">★</span>
+      </div>
+    </div>
+    <div id="victimRatingStarLabel" style="text-align:center;font-weight:700;font-size:0.85rem;color:#34d399;margin-bottom:14px">5 Stars — Excellent & Fast Help!</div>
+
+    <!-- Quick Feedback Chips -->
+    <label class="vcin-label" style="font-size:0.75rem;margin-bottom:6px;display:block">How was their assistance?</label>
+    <div class="vcin-rating-tags-grid" id="vicRatingTags">
+      <button type="button" class="vcin-tag-chip active" data-tag="Arrived Quickly">⚡ Arrived Quickly</button>
+      <button type="button" class="vcin-tag-chip active" data-tag="Felt Safe">🛡️ Made Me Feel Safe</button>
+      <button type="button" class="vcin-tag-chip active" data-tag="Helpful & Calming">🤝 Calm & Helpful</button>
+      <button type="button" class="vcin-tag-chip" data-tag="Stayed on Line">📞 Stayed Connected</button>
+      <button type="button" class="vcin-tag-chip negative" data-tag="Delayed">⏱️ Delayed Response</button>
+      <button type="button" class="vcin-tag-chip negative" data-tag="Did Not Show">⚠️ Did Not Show Up</button>
+    </div>
+
+    <!-- Optional feedback -->
+    <textarea id="vicGuardianComment" class="vcin-textarea" rows="2" placeholder="Optional appreciation note for guardian…" style="margin-bottom:14px;font-size:0.82rem"></textarea>
+
+    <button type="button" class="vcin-rating-submit-btn" onclick="submitVictimGuardianRating()">
+      ⭐ Submit Rating & Boost Guardian CTS
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN APP (hidden until room joined)
+════════════════════════════════════════════════════════════════ -->
+<div id="mainApp" class="hidden">
+
+<header class="vcin-header">
+  <div class="vcin-header-left">
+    <img src="assets/vcin-logo.svg" alt="VCIN" class="vcin-header-logo-img"/>
+    <div>
+      <div class="vcin-header-title">Suraksha</div>
+      <div class="vcin-header-sub">Room: <strong id="headerRoomCode">—</strong> · <span id="headerName">—</span></div>
+    </div>
+  </div>
+  <div class="vcin-header-right">
+    <span id="connStatus" class="vcin-chip vcin-chip-warn">Connecting…</span>
+    <button id="langToggle" class="vcin-chip vcin-chip-default">हिंदी</button>
+    <button id="stealthBtn" class="vcin-chip vcin-chip-default">🕵️</button>
+  </div>
+</header>
+
+<main class="vcin-main">
+
+  <!-- ── 4-Card Action Grid (Image 1) ────────────────────────── -->
+  <section class="vcin-section vcin-dashboard-grid">
+    <div class="vcin-action-card vcin-card-red" id="cardReportIncident">
+      <div class="vcin-card-icon">🚨</div>
+      <div class="vcin-card-title">Report Incident</div>
+      <div class="vcin-card-sub">Report suspicious activity or press SOS instantly</div>
+      <button class="vcin-card-btn">➜</button>
+    </div>
+
+    <div class="vcin-action-card vcin-card-orange" id="cardGoldenHour">
+      <div class="vcin-card-icon">⏱️</div>
+      <div class="vcin-card-title">Fraud Rescue - Golden Hour</div>
+      <div class="vcin-card-sub">Act within 60 minutes to freeze fraud funds</div>
+      <button class="vcin-card-btn">➜</button>
+    </div>
+
+    <div class="vcin-action-card vcin-card-blue" id="cardScamMap">
+      <div class="vcin-card-icon">📍</div>
+      <div class="vcin-card-title">Live Scam Map</div>
+      <div class="vcin-card-sub">Explore real-time scam hotspots near you</div>
+      <button class="vcin-card-btn">➜</button>
+    </div>
+
+    <div class="vcin-action-card vcin-card-green" id="cardSafeJourney">
+      <div class="vcin-card-icon">🛡️</div>
+      <div class="vcin-card-title">Safe Journey / Guardian</div>
+      <div class="vcin-card-sub">Share live trip with trusted network & guardians</div>
+      <button class="vcin-card-btn">➜</button>
+    </div>
+  </section>
+
+  <!-- ── Civic Trust Score Bar (Image 1 & 2) ────────────────── -->
+  <section class="vcin-section vcin-trust-card">
+    <div class="vcin-trust-header">
+      <div>
+        <div class="vcin-trust-title">Your Civic Trust Score</div>
+        <div class="vcin-trust-score"><span id="userTrustScore">87</span> <small>/ 100</small> <span class="vcin-badge vcin-badge-success">HIGH TRUST</span></div>
+      </div>
+      <div class="vcin-trust-shield">🛡️</div>
+    </div>
+    <div class="vcin-trust-progress-bg">
+      <div class="vcin-trust-progress-fill" id="trustProgressBar" style="width: 87%"></div>
+    </div>
+    <div class="vcin-muted" style="font-size:0.75rem;margin-top:6px">Based on your verified evidence reports and room activity.</div>
+  </section>
+
+  <!-- ── Recent Smart Alerts (Image 1 & 2) ─────────────────── -->
+  <section class="vcin-section">
+    <div class="vcin-section-header">
+      <h2>🔔 Recent Alerts Around You</h2>
+      <span class="vcin-badge vcin-badge-warn">Live Corroboration</span>
+    </div>
+    <div class="vcin-recent-alerts-list">
+      <div class="vcin-alert-item vcin-item-danger">
+        <div class="vcin-alert-icon">⚠️</div>
+        <div style="flex:1">
+          <div class="vcin-alert-item-title">UPI Fraud Attempt Reported</div>
+          <div class="vcin-alert-item-sub">Connaught Place, New Delhi · 10 mins ago</div>
+        </div>
+        <span class="vcin-badge vcin-badge-danger">VERIFIED</span>
+      </div>
+      <div class="vcin-alert-item vcin-item-warn">
+        <div class="vcin-alert-icon">⚡</div>
+        <div style="flex:1">
+          <div class="vcin-alert-item-title">Fake Job Scam Alert</div>
+          <div class="vcin-alert-item-sub">Koramangala, Bengaluru · 25 mins ago</div>
+        </div>
+        <span class="vcin-badge vcin-badge-warn">3 REPORTERS</span>
+      </div>
+      <div class="vcin-alert-item vcin-item-info">
+        <div class="vcin-alert-icon">🛡️</div>
+        <div style="flex:1">
+          <div class="vcin-alert-item-title">Elderly Citizen Saved</div>
+          <div class="vcin-alert-item-sub">Fraud Rescue - Golden Hour Success · 1 hr ago</div>
+        </div>
+        <span class="vcin-badge vcin-badge-success">RESOLVED</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SOS Hero ───────────────────────────────────────────── -->
+  <section class="vcin-section vcin-sos-section" id="sosSection">
+    <!-- SOS Button -->
+    <div class="vcin-sos-wrap">
+      <button id="sosBtn" class="vcin-sos-btn" aria-label="SOS Emergency Button">
+        <span class="vcin-sos-label" data-i18n="sos">SOS</span>
+        <span class="vcin-sos-sub">Hold for emergency</span>
+      </button>
+      <p id="sosStatus" class="vcin-sos-hint" data-i18n="sosHint">Tap in an emergency. Location + audio recording start instantly.</p>
+    </div>
+
+    <!-- Recording indicator -->
+    <div id="recIndicator" class="vcin-rec-badge hidden">
+      🔴 <span data-i18n="recording">Recording evidence…</span> <span id="recTime">0:00</span>
+      <code class="vcin-hash-inline" id="recHash" title="SHA-256 of audio chunk"></code>
+    </div>
+
+    <!-- SOS status banners -->
+    <div id="respondersLine"    class="vcin-status-banner hidden"></div>
+    <div id="operatorStatus"    class="vcin-ok-banner hidden">✅ <span data-i18n="operatorConnected">Cyber cell operator connected. Stay on the line.</span></div>
+    <div id="guardianEnRoute"   class="vcin-ok-banner hidden" style="background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.4)">🤝 Guardian is on the way!</div>
+
+    <!-- Actions -->
+    <div class="vcin-sos-actions">
+      <button id="cancelSos"       class="vcin-btn-secondary hidden" data-i18n="cancelSos">I am safe – cancel SOS</button>
+      <button id="joinConferenceBtn" class="vcin-btn-primary hidden">📞 Join Conference</button>
+    </div>
+
+    <!-- Shake-to-SOS toggle -->
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <label class="vcin-toggle-row" style="margin:0">
+        <input type="checkbox" id="shakeSosToggle" checked/>
+        📳 <span data-i18n="shakeSos">Shake to SOS (6 shakes)</span>
+      </label>
+      <button id="testShakeBtn" class="vcin-btn-secondary" style="font-size:0.75rem;padding:4px 8px;margin:0">📳 Simulate Shake</button>
+    </div>
+  </section>
+
+  <!-- ── Guardian Mode Toggle ───────────────────────────────── -->
+  <section class="vcin-section">
+    <div class="vcin-section-header">
+      <h2 data-i18n="guardian">🤝 Guardian Mode</h2>
+      <label class="vcin-switch">
+        <input type="checkbox" id="guardianModeToggle"/>
+        <span class="vcin-switch-slider"></span>
+      </label>
+    </div>
+    <p class="vcin-muted" data-i18n="guardianHint">Toggle to go on standby. You'll be alerted if someone in this room needs help.</p>
+
+    <div id="guardianStandbyPanel" class="hidden">
+      <div class="vcin-row" style="margin-bottom:10px;align-items:center">
+        <label class="vcin-label" data-i18n="radiusLabel" style="margin:0">Alert radius (km):</label>
+        <input id="radiusInput" class="vcin-input" type="number" min="0.5" max="50" step="0.5" value="5" style="width:80px;margin:0"/>
+        <span class="vcin-badge vcin-badge-success" style="margin-left:auto">🟢 Standby Active</span>
+      </div>
+      
+      <!-- Guardian Live Route Map & Navigation HUD -->
+      <div id="guardianMapCard" class="vcin-card hidden" style="margin-bottom:12px;padding:12px;background:rgba(15,23,42,0.85);border:1px solid rgba(16,185,129,0.4)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h4 style="margin:0;color:#10b981;display:flex;align-items:center;gap:6px">🗺️ Live Victim Location & Route</h4>
+          <span id="guardianLiveBadge" class="vcin-chip vcin-chip-ok">📡 Real-Time GPS</span>
+        </div>
+        <div id="guardianRouteInfo" style="padding:8px 12px;background:rgba(30,41,59,0.9);border-radius:8px;font-size:0.85rem;margin-bottom:10px;color:#e2e8f0;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+          <div>📏 Distance: <strong id="guardianDistVal" style="color:#38bdf8">-- km</strong></div>
+          <div>⏱️ Est. Arrival: <strong id="guardianEtaVal" style="color:#4ade80">-- min</strong></div>
+          <div id="gNavBtnWrap" style="margin-left:auto"></div>
+        </div>
+        <div id="guardianMap" style="height:250px;width:100%;border-radius:10px;border:1px solid rgba(148,163,184,0.2)"></div>
+      </div>
+
+      <div id="incomingAlerts"></div>
+    </div>
+  </section>
+
+  <!-- ── 15-Second Recurring Nearby Alert Toast Container ────────────────── -->
+  <div id="recurringAlertToast" class="vcin-alert-toast hidden"></div>
+
+  <!-- ── Helplines ─────────────────────────────────────────── -->
+  <section class="vcin-section">
+    <h2 data-i18n="helplines">📞 One-tap Helplines</h2>
+    <div class="vcin-helpline-grid">
+      <a class="vcin-helpline-btn" href="tel:1930">
+        <span class="vcin-helpline-num">1930</span>
+        <span class="vcin-helpline-label" data-i18n="cyberFraud">Cyber Fraud</span>
+      </a>
+      <a class="vcin-helpline-btn" href="tel:112">
+        <span class="vcin-helpline-num">112</span>
+        <span class="vcin-helpline-label" data-i18n="emergency">Emergency</span>
+      </a>
+      <a class="vcin-helpline-btn" href="tel:181">
+        <span class="vcin-helpline-num">181</span>
+        <span class="vcin-helpline-label" data-i18n="womenHelp">Women Helpline</span>
+      </a>
+      <a class="vcin-helpline-btn" href="tel:14416">
+        <span class="vcin-helpline-num">14416</span>
+        <span class="vcin-helpline-label" data-i18n="mentalHelp">Mental Health</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Safe Journey & Live Map ───────────────────────────── -->
+  <section class="vcin-section">
+    <h2 data-i18n="journey">📍 Safe Journey</h2>
+    <p class="vcin-muted" data-i18n="journeyHint">Tap your destination on the map. Share live location with your family circle.</p>
+    <div id="journeyMap" class="vcin-map"></div>
+    <div id="journeyTargetInfo" class="vcin-muted" style="margin-bottom:10px;font-weight:600">Destination: Tap on map to set</div>
+    <div class="vcin-row">
+      <div style="flex:1;display:flex;align-items:center;gap:8px">
+        <label class="vcin-label" for="etaMinutes" style="margin:0;white-space:nowrap">ETA (mins):</label>
+        <input id="etaMinutes" class="vcin-input" type="number" min="1" max="180" value="30" style="margin:0;flex:1"/>
+      </div>
+      <button id="journeyBtn" class="vcin-btn-primary" style="flex:1" data-i18n="startJourney" disabled>Start Ride</button>
+    </div>
+    <p id="journeyStatus" class="vcin-muted"></p>
+  </section>
+
+  <!-- ── Rapid Evidence Report ─────────────────────────────── -->
+  <section class="vcin-section">
+    <h2 data-i18n="complaint">📝 Rapid Evidence Report</h2>
+    <select id="complaintType" class="vcin-select">
+      <option value="fraud"       data-i18n="optFraud">Financial fraud / scam</option>
+      <option value="harassment"  data-i18n="optHarassment">Online harassment</option>
+      <option value="blackmail"   data-i18n="optBlackmail">Blackmail / sextortion</option>
+      <option value="stalking"    data-i18n="optStalking">Stalking</option>
+      <option value="custom"      data-i18n="optCustom">Custom / Other</option>
+    </select>
+    <input id="customCategoryInput" type="text" class="vcin-input hidden" placeholder="Enter custom category name" style="margin-top:8px"/>
+
+    <textarea id="complaintDetails" class="vcin-textarea" rows="3"
+              placeholder="Describe what happened (text only)…" data-i18n-ph="complaintPh"></textarea>
+
+    <!-- Image upload — 1 image only for simulation -->
+    <div class="vcin-upload-zone" id="uploadZone">
+      <label for="complaintImage" style="cursor:pointer;display:block">
+        📷 Upload 1 Evidence Image (simulation)<br/>
+        <span style="font-size:0.78rem;opacity:0.7">JPG / PNG / WEBP · Max 2 MB</span>
+      </label>
+      <input type="file" id="complaintImage" accept="image/*" style="display:none"/>
+    </div>
+    <div id="imagePreviewWrap" class="hidden" style="margin-top:10px">
+      <img id="imagePreview" style="max-width:100%;border-radius:8px;border:1px solid rgba(100,116,139,0.2)"/>
+      <p class="vcin-muted" style="margin-top:6px;font-size:0.8rem">SHA-256: <code id="imageHash">—</code></p>
+    </div>
+
+    <div class="vcin-row" style="margin-top:12px">
+      <button id="draftBtn"           class="vcin-btn-secondary" style="flex:1" data-i18n="draftBtn">Generate Draft</button>
+      <button id="submitComplaintBtn" class="vcin-btn-primary"   style="flex:1;background:#16a34a">🔒 Submit as Evidence</button>
+    </div>
+    <div id="draftOut" class="hidden vcin-draft-box"></div>
+  </section>
+
+
+
+  <!-- ── Live Scam Map Section (Image 3) ────────────────────── -->
+  <section class="vcin-section" id="liveScamMapSection">
+    <div class="vcin-section-header">
+      <div>
+        <h2 style="display:flex;align-items:center;gap:8px">
+          Live Scam Map
+          <span class="vcin-live-badge"><span class="vcin-pulse-dot"></span> Live</span>
+        </h2>
+        <p class="vcin-muted" style="margin-top:2px">Real-time fraud & crime alerts around you</p>
+      </div>
+    </div>
+
+    <!-- Category Filter Chips (Image 3) -->
+    <div class="vcin-filter-chips">
+      <button class="vcin-chip-btn active" data-filter="all">All</button>
+      <button class="vcin-chip-btn" data-filter="fraud">💸 Fraud</button>
+      <button class="vcin-chip-btn" data-filter="crime">🚨 Crime</button>
+      <button class="vcin-chip-btn" data-filter="atm">🏪 ATM</button>
+      <button class="vcin-chip-btn" data-filter="24h">⏱️ Last 24h</button>
+    </div>
+
+    <!-- Dark Theme Hexagonal Map Container -->
+    <div style="position:relative">
+      <div id="citizenHexMap" class="vcin-hex-map-box"></div>
+
+      <!-- Interaction hint -->
+      <div class="vcin-map-hint" aria-hidden="true">🖱️ Scroll to zoom · Drag to pan</div>
+    </div>
+
+    <!-- Live Area News Feed (synced with map markers & filters) -->
+    <div class="vcin-news-panel">
+      <div class="vcin-news-panel-header">
+        <h3>📰 Live Area News</h3>
+        <span class="vcin-news-count" id="citizenNewsCount">0 live reports</span>
+      </div>
+      <div class="vcin-news-list" id="citizenNewsList">
+        <div class="vcin-news-empty">📡 Locating you and fetching live scam &amp; crime reports…</div>
+      </div>
+    </div>
+
+    <!-- Area Summary Stats Bar (Image 3) -->
+    <div class="vcin-area-stats-card">
+      <div class="vcin-area-location">📍 Your Area: <strong id="userAreaName">Koramangala, Bengaluru</strong></div>
+      <div class="vcin-area-stats-row">
+        <div class="vcin-area-stat-item">
+          <span class="vcin-area-stat-num" id="statFraudReports">0</span>
+          <span class="vcin-area-stat-lbl">fraud reports (7 days)</span>
+        </div>
+        <div class="vcin-area-stat-item">
+          <span class="vcin-area-stat-num" id="statCrimePatterns">0</span>
+          <span class="vcin-area-stat-lbl">active crime patterns</span>
+        </div>
+        <div class="vcin-area-stat-item">
+          <span class="vcin-area-stat-num" id="statHighRisk">0</span>
+          <span class="vcin-area-stat-lbl">high-risk alerts</span>
+        </div>
+      </div>
+      <!-- Risk Level Colors -->
+      <div class="vcin-risk-levels-legend">
+        <span><span class="vcin-legend-dot" style="background:#ef4444"></span> High Risk</span>
+        <span><span class="vcin-legend-dot" style="background:#f97316"></span> Warning</span>
+        <span><span class="vcin-legend-dot" style="background:#eab308"></span> Moderate</span>
+        <span><span class="vcin-legend-dot" style="background:#22c55e"></span> Safe</span>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Bottom Navigation Bar (Image 1, 2, 3, 4) -->
+<nav class="vcin-bottom-nav">
+  <button class="vcin-nav-item active" id="navHome">
+    <span class="vcin-nav-icon">🏠</span>
+    <span>Home</span>
+  </button>
+  <button class="vcin-nav-item" id="navMap">
+    <span class="vcin-nav-icon">🗺️</span>
+    <span>Live Map</span>
+  </button>
+  <button class="vcin-nav-item vcin-nav-primary" id="navReport">
+    <span class="vcin-nav-icon">➕</span>
+    <span>Report</span>
+  </button>
+  <button class="vcin-nav-item" id="navAlerts">
+    <span class="vcin-nav-icon">🔔</span>
+    <span>Alerts</span>
+  </button>
+  <button class="vcin-nav-item" id="navGuardian">
+    <span class="vcin-nav-icon">🛡️</span>
+    <span>Guardian</span>
+  </button>
+</nav>
+
+</div><!-- /mainApp -->
+
+<!-- Stealth Calculator Overlay (unchanged) -->
+<div id="stealthOverlay" class="hidden" style="position:fixed;inset:0;background:#171717;color:#fff;z-index:9999;display:flex;flex-direction:column;font-family:sans-serif;user-select:none;">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding:20px;text-align:right;background:#262626;">
+    <div id="calcHistory" style="font-size:1.2rem;color:#a3a3a3;min-height:1.5rem;word-break:break-all;"></div>
+    <div id="calcDisplay" style="font-size:3.5rem;font-weight:300;margin-top:10px;word-break:break-all;overflow-x:auto;white-space:nowrap;">0</div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#404040;padding:1px;">
+    <button class="calc-btn fn" id="calcClear"  style="padding:24px 0;font-size:1.5rem;border:none;background:#404040;color:#fff;cursor:pointer;">C</button>
+    <button class="calc-btn fn"                 style="padding:24px 0;font-size:1.5rem;border:none;background:#404040;color:#fff;cursor:pointer;">+/-</button>
+    <button class="calc-btn fn"                 style="padding:24px 0;font-size:1.5rem;border:none;background:#404040;color:#fff;cursor:pointer;">%</button>
+    <button class="calc-btn op"                 style="padding:24px 0;font-size:1.5rem;border:none;background:#ea580c;color:#fff;cursor:pointer;">/</button>
+    <button class="calc-btn num"                style="padding:24px 0;font-size:1.5rem;border:none;background:#171717;color:#fff;cursor:pointer;">7</button>
+    <button class="calc-btn num"                style="padding:24px 0;font-size:1.5rem;border:none;background:#171717;color:#fff;cursor:pointer;">8</button>
+    <button class="calc-btn num"                style="padding:24px 0;font-size:1.5rem;border:none;background:#171717;color:#fff;cursor:pointer;">9</button>
+    <button class="calc-btn op"                 style="padding:24px 0;font-size:1.5rem;border:none;background:#ea580c;color:#fff;cursor:pointer;">*</button>
+    <button class="calc-btn num"                style="padding:24px 0;font-size:1.5rem;border:none;background:#171717;color:#fff;cursor:pointer;">4</button>
+    <button class="calc-btn num"                style="padding:24px 0;font-size:1.5rem;border:none;background:#171717;color:#fff;cursor:pointer;">5</button>
+    <button class="calc-btn num"                style="padding:24px 0;font-size:1.5rem;border:none;background:#171717;color:#fff;cursor:pointer;">6</button>
+    <button class="calc-btn op"                 style="padding:24px 0;font-size:1.5rem;border:none;background:#ea580c;color:#fff;cursor:pointer;">-</button>
+    <button class="calc-btn num"                style="padding:24px 0;font-size:1.5rem;border:none;background:#171717;color:#fff;cursor:pointer;">1</button>
+    <button class="calc-btn num"                style="padding:24px 0;font-size:1.5rem;border:none;background:#171717;color:#fff;cursor:pointer;">2</button>
+    <button class="calc-btn num"                style="padding:24px 0;font-size:1.5rem;border:none;background:#171717;color:#fff;cursor:pointer;">3</button>
+    <button class="calc-btn op"                 style="padding:24px 0;font-size:1.5rem;border:none;background:#ea580c;color:#fff;cursor:pointer;">+</button>
+    <button class="calc-btn num" style="grid-column:span 2;padding:24px 0;font-size:1.5rem;border:none;background:#171717;color:#fff;cursor:pointer;text-align:left;padding-left:40px;">0</button>
+    <button class="calc-btn num"                style="padding:24px 0;font-size:1.5rem;border:none;background:#171717;color:#fff;cursor:pointer;">.</button>
+    <button class="calc-btn op" id="calcEquals" style="padding:24px 0;font-size:1.5rem;border:none;background:#ea580c;color:#fff;cursor:pointer;">=</button>
+  </div>
+</div>
+
+<!-- Scripts -->
+<!-- mqtt pinned: unpinned unpkg.com/mqtt resolves to latest and can change
+     between page loads. Bump deliberately after testing. -->
+<script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/h3-js@4.1.0/dist/h3-js.umd.js"></script>
+<script src="https://cdn.ux4g.gov.in/UX4G@3.0.18/ux4g.js" defer></script>
+<script src="https://cdn.ux4g.gov.in/UX4G@3.0.18/ux4g-custom.js" defer></script>
+<script src="sfx.js?v=2.5.0"></script>
+<script src="bus.js?v=2.5.0"></script>
+<script src="app.js?v=3.0.0"></script>
+<script src="nav-switcher.js?v=3.0.0"></script>
+<!-- ═══════════════════════════════════════════════════════════
+     ROOM CODE EXPLANATION MODAL (First-time User)
+════════════════════════════════════════════════════════════════ -->
+<div id="roomCodeExplanationModal" class="vcin-overlay hidden">
+  <div class="vcin-modal-card vcin-explanation-modal" style="max-width:560px;">
+    <button class="vcin-modal-close" id="closeRoomCodeExplanation">✕</button>
+    
+    <div class="explanation-header">
+      <span class="explanation-icon">🔑</span>
+      <h2>Welcome to V-CIN Prototype!</h2>
+    </div>
+    
+    <div class="explanation-body">
+      <div class="highlight-box prototype-warning">
+        <span class="warning-icon">⚠️</span>
+        <strong>THIS IS A SIMULATED PROTOTYPE</strong>
+        <p>Please <strong>refresh</strong>, <strong>wait</strong>, <strong>try</strong> — things may need a reload to sync properly.</p>
+      </div>
+      
+      <h3>📱 The 4-Digit Room Code — Critical for Multi-Device Testing</h3>
+      <p>The room code (a random 4-digit code — auto-generated if empty) connects multiple devices into one live simulation room. Here's how to test properly:</p>
+      
+      <div class="device-requirements">
+        <div class="device-row">
+          <span class="device-icon">🖥️</span>
+          <div>
+            <strong>Device 1 — Operator Dashboard</strong>
+            <p>Open <code>operator.html?pin=1234</code> on a laptop/desktop first. This is the command center.</p>
+          </div>
+        </div>
+        <div class="device-row">
+          <span class="device-icon">📱</span>
+          <div>
+            <strong>Device 2 — Citizen App</strong>
+            <open <code>index.html?pin=1234</code> on a phone. This is the victim/responder.</p>
+          </div>
+        </div>
+        <div class="device-row guardian-row">
+          <span class="device-icon">🛡️</span>
+          <div>
+            <strong>Device 3+ — Guardian App (for Guardian Mode)</strong>
+            <p>Open <code>index.html?pin=1234</code> on additional phones. Enable Guardian Mode in each. <strong>Minimum 3 devices total for Guardian testing.</strong></p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="permissions-box">
+        <h4>🔐 Required Permissions — Allow All</h4>
+        <ul>
+          <li><strong>Location (GPS)</strong> — Required for SOS location, Guardian dispatch, live tracking</li>
+          <li><strong>Microphone</strong> — Required for audio evidence recording (SHA-256 hashed)</li>
+          <li><strong>Camera</strong> — Required for video conference (Jitsi)</li>
+          <li><strong>Notifications</strong> — Required for SOS alerts, Guardian dispatches</li>
+        </ul>
+        <p class="permission-note">Without these, core features won't work. Browser will prompt on first use.</p>
+      </div>
+      
+      <div class="testing-flow">
+        <h4>🧪 Recommended Test Flow</h4>
+        <ol>
+          <li>Open Operator Dashboard first (Device 1)</li>
+          <li>Open Citizen App (Device 2) — press SOS</li>
+          <li>Watch Operator Dashboard receive alert</li>
+          <li>Open Guardian App (Device 3) — go on Standby</li>
+          <li>Watch Guardian get dispatched, join video conference</li>
+          <li>Complete mission → see rating → CTS updates</li>
+        </ol>
+      </div>
+      
+      <p class="room-code-tip"><strong>Tip:</strong> Change the room code in the header (top-right PIN badge) to create separate test rooms. Share the same code across devices to join the same room.</p>
+    </div>
+    
+    <div class="explanation-actions">
+      <label class="dont-show-again">
+        <input type="checkbox" id="dontShowRoomExplanation"> Don't show again
+      </label>
+      <button class="vcin-btn-primary" id="gotItRoomExplanation">Got it — Start Testing</button>
+    </div>
+  </div>
+</div>
+
+<script src="tour.js?v=1.3.0"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ROOM CODE EXPLANATION MODAL — Show on First Visit
+═════════════════════════════════════════════════════════════ */
+(function() {
+  "use strict";
+  const EXPLANATION_KEY = 'vcin-room-explanation-shown';
+  
+  function showExplanationModal() {
+    const modal = document.getElementById('roomCodeExplanationModal');
+    const closeBtn = document.getElementById('closeRoomCodeExplanation');
+    const gotItBtn = document.getElementById('gotItRoomExplanation');
+    const dontShowCheckbox = document.getElementById('dontShowRoomExplanation');
+    
+    if (!modal) return;
+    
+    // Check if already shown and user opted out
+    if (localStorage.getItem(EXPLANATION_KEY) === '1') return;
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    function hideModal() {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+      // Save preference
+      if (dontShowCheckbox.checked) {
+        localStorage.setItem(EXPLANATION_KEY, '1');
+      }
+    }
+    
+    closeBtn?.addEventListener('click', hideModal);
+    gotItBtn?.addEventListener('click', hideModal);
+    
+    // Close on overlay click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) hideModal();
+    });
+    
+    // Close on Escape key
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        hideModal();
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+  }
+  
+  // Show after app is ready (after join overlay)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      // Small delay to let join overlay handle first
+      setTimeout(showExplanationModal, 1500);
+    });
+  } else {
+    setTimeout(showExplanationModal, 1500);
+  }
+})();
+</script>
+</body>
+</html>

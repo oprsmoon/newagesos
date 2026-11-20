@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content="V-CIN Suraksha — Cyber Cell Operator Dashboard"/>
+<title>V-CIN – Operator Dashboard</title>
+
+<!-- UX4G Government Design System 3.0 -->
+<link rel="stylesheet" href="https://cdn.ux4g.gov.in/UX4G@3.0.18/index.css"/>
+
+<!-- Leaflet Maps -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<!-- PeerJS Open Source WebRTC Engine -->
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+<!-- Custom V-CIN Styles -->
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body class="vcin-op-body">
+
+<!-- ═══════════════════════════════════════════════════════════
+     ROOM JOIN OVERLAY (Operator)
+════════════════════════════════════════════════════════════════ -->
+<div id="joinOverlay" class="vcin-overlay vcin-op-overlay">
+  <div class="vcin-join-card vcin-op-join">
+    <div class="vcin-logo-wrap">
+      <img src="assets/vcin-logo.svg" alt="VCIN Official Logo" class="vcin-brand-logo-img"/>
+      <h1 class="vcin-brand">V-CIN <span>Operator</span></h1>
+      <p class="vcin-tagline">Cyber Cell Command Dashboard</p>
+      <div class="vcin-brand-slogan">
+        <span class="vcin-slogan-verify">VERIFY</span> •
+        <span class="vcin-slogan-connect">CONNECT</span> •
+        <span class="vcin-slogan-protect">PROTECT</span>
+      </div>
+    </div>
+
+    <div class="vcin-join-form">
+      <label class="vcin-label">Operator Name</label>
+      <input id="joinName" class="vcin-input" type="text" placeholder="Operator / Officer name" maxlength="30"/>
+
+      <label class="vcin-label" style="margin-top:18px">Room Code</label>
+      <div class="vcin-otp-row" style="display:flex;flex-direction:row;gap:8px;width:100%;box-sizing:border-box;margin-bottom:12px">
+        <input class="vcin-otp-box" id="otp0" maxlength="4" type="text" inputmode="numeric" pattern="[0-9]" placeholder="X" style="flex:1 1 0;width:0;min-width:0;box-sizing:border-box"/>
+        <input class="vcin-otp-box" id="otp1" maxlength="4" type="text" inputmode="numeric" pattern="[0-9]" placeholder="X" style="flex:1 1 0;width:0;min-width:0;box-sizing:border-box"/>
+        <input class="vcin-otp-box" id="otp2" maxlength="4" type="text" inputmode="numeric" pattern="[0-9]" placeholder="X" style="flex:1 1 0;width:0;min-width:0;box-sizing:border-box"/>
+        <input class="vcin-otp-box" id="otp3" maxlength="4" type="text" inputmode="numeric" pattern="[0-9]" placeholder="X" style="flex:1 1 0;width:0;min-width:0;box-sizing:border-box"/>
+      </div>
+
+      <div class="vcin-code-gen-row">
+        <button type="button" id="generateCodeBtn" class="vcin-btn-secondary" style="flex:1" onclick="generateNewRoomCode(event)">🎲 Generate Code</button>
+        <span class="vcin-gen-code-display" id="genCodeDisplay" onclick="generateNewRoomCode(event)" style="cursor:pointer">—</span>
+      </div>
+
+      <button type="button" id="joinBtn" class="vcin-btn-primary" style="opacity:1;cursor:pointer" onclick="handleOperatorJoin(event)">Open Dashboard →</button>
+    </div>
+    <div class="vcin-join-footer">
+      <span class="vcin-badge-gov">🇮🇳 Demo Mode — Cyber Cell Operator</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JITSI CONFERENCE OVERLAY
+════════════════════════════════════════════════════════════════ -->
+<div id="jitsiOverlay" class="vcin-overlay hidden">
+  <div class="vcin-jitsi-card">
+    <div class="vcin-jitsi-header">
+      <span class="vcin-jitsi-title">📹 V-CIN Conference Call</span>
+      <div class="vcin-call-timer" id="callTimerDisplay">3:00</div>
+      <button class="vcin-btn-danger-sm" id="leaveCallBtn">📵 End Call</button>
+    </div>
+    <div id="jitsiContainer" style="width:100%;height:calc(100% - 56px);border-radius:0 0 16px 16px;overflow:hidden;"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN DASHBOARD (hidden until room joined)
+════════════════════════════════════════════════════════════════ -->
+<div id="mainApp" class="hidden">
+
+<!-- ── Tactical Command Header ────────────────────────────────────── -->
+<header class="vcin-op-header">
+  <div class="vcin-header-brand-wrap">
+    <img src="assets/vcin-logo.svg" alt="VCIN Cyber Command" class="vcin-header-logo-img"/>
+    <div>
+      <div class="vcin-header-title">
+        <span>V-CIN CYBER CELL COMMAND</span>
+        <span class="vcin-hud-badge">SECURE v2.5</span>
+      </div>
+      <div class="vcin-header-sub">
+        <span>ROOM: <strong id="headerRoomCode" style="color:var(--op-cyan)">—</strong></span>
+        <span>•</span>
+        <span>OFFICER: <strong id="headerName" style="color:#f8fafc">—</strong></span>
+        <span>•</span>
+        <span id="connStatus" class="vcin-hud-badge" style="background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.35);color:#34d399">🟢 ONLINE (MQTT)</span>
+      </div>
+    </div>
+  </div>
+  <div class="vcin-header-controls">
+    <button id="opSirenMuteBtn" class="vcin-btn-secondary-sm" onclick="toggleSirenMute(event)" title="Mute Siren">🔊 Siren</button>
+    <button id="opTTSMuteBtn" class="vcin-btn-secondary-sm" onclick="toggleTTSMute(event)" title="Toggle Voice Announcement Speech">🗣️ TTS Voice: ON</button>
+    <a href="./index.html" target="_blank" class="vcin-btn-secondary-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+      <span>📱 Open Citizen App</span>
+    </a>
+  </div>
+</header>
+
+<!-- ── Tactical Stats HUD Strip ──────────────────────────────────── -->
+<div class="vcin-stats-strip">
+  <div class="vcin-stat-card vcin-stat-danger">
+    <div class="vcin-stat-num" id="statSOS">0</div>
+    <div class="vcin-stat-label">🚨 Active SOS Incidents</div>
+  </div>
+  <div class="vcin-stat-card vcin-stat-warn">
+    <div class="vcin-stat-num" id="statGH">0</div>
+    <div class="vcin-stat-label">⚡ Golden Hour Triage</div>
+  </div>
+  <div class="vcin-stat-card vcin-stat-info">
+    <div class="vcin-stat-num" id="statGuardians">0</div>
+    <div class="vcin-stat-label">🤝 Active Guardian Fleet</div>
+  </div>
+  <div class="vcin-stat-card vcin-stat-success">
+    <div class="vcin-stat-num" id="statComplaints">0</div>
+    <div class="vcin-stat-label">📝 Evidence Vault Reports</div>
+  </div>
+  <div class="vcin-stat-card">
+    <div class="vcin-stat-num" id="statResponse">—</div>
+    <div class="vcin-stat-label">⏱️ Avg Response Latency</div>
+  </div>
+  <div class="vcin-stat-card">
+    <div class="vcin-stat-num" id="statMembers">0</div>
+    <div class="vcin-stat-label">👥 Tactical Room Fleet</div>
+  </div>
+</div>
+
+<!-- ── Main Tactical Command Container ─────────────────────────────── -->
+<div class="vcin-op-container">
+
+  <!-- ── SECTION 1: HERO GEOSPATIAL MAP MATRIX (Full Width Left/Right Split) ── -->
+  <div class="vcin-op-dual-map-grid">
+
+    <!-- 1. Live Incident Geolocation & Dispatch Map (Left) -->
+    <div class="vcin-map-box">
+      <div class="vcin-op-map-header">
+        <span>🗺️ Live Incident Geolocation & Dispatch</span>
+        <span class="vcin-muted" id="mapRoomLabel" style="font-family:var(--op-mono)"></span>
+      </div>
+      <div id="operatorMap" class="vcin-op-map"></div>
+      <div class="vcin-map-legend">
+        <span><span class="vcin-legend-dot" style="background:#ef4444"></span> Victim SOS</span>
+        <span><span class="vcin-legend-dot" style="background:#10b981"></span> Guardian</span>
+        <span><span class="vcin-legend-dot" style="background:#3b82f6"></span> Operator</span>
+        <span><span class="vcin-legend-dot" style="background:#f59e0b"></span> Golden Hour</span>
+      </div>
+    </div>
+
+    <!-- 2. India Hexagonal Risk Matrix - Uber H3.js (Right) -->
+    <div class="vcin-map-box" style="position:relative">
+      <div class="vcin-op-map-header">
+        <span>⬡ India Hexagonal Risk Matrix (Uber H3.js)</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="vcin-btn-secondary-sm" onclick="toggleHexControlsMenu(event)" style="font-size:0.72rem;padding:3px 8px">⚙️ Controls</button>
+          <button id="refreshOpHexmap" class="vcin-btn-secondary-sm" style="font-size:0.72rem;padding:3px 8px">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Clean Floating Controls Menu -->
+      <div id="hexControlsMenu" class="vcin-hex-dropdown-menu hidden">
+        <div class="vcin-hex-dropdown-header">
+          <span>⚙️ Hexagon Controls</span>
+          <button onclick="document.getElementById('hexControlsMenu').classList.add('hidden')" style="background:none;border:none;color:#94a3b8;cursor:pointer">✕</button>
+        </div>
+        <div class="vcin-hex-dropdown-body">
+          <div class="vcin-dock-group">
+            <div class="vcin-dock-label">Resolution: <span id="opH3ResVal" style="color:#38bdf8">Res 5 (~5km)</span></div>
+            <div class="vcin-res-buttons">
+              <button type="button" class="vcin-res-btn" data-res="4" onclick="setH3Resolution(4)">12km</button>
+              <button type="button" class="vcin-res-btn active" data-res="5" onclick="setH3Resolution(5)">5km</button>
+              <button type="button" class="vcin-res-btn" data-res="6" onclick="setH3Resolution(6)">2km</button>
+            </div>
+          </div>
+          <div class="vcin-dock-group" style="margin-top:8px">
+            <div class="vcin-dock-label">Hex Radius: <span id="opHexRadiusVal">100.0</span> KM</div>
+            <input type="range" id="opHexRadiusSlider" min="20" max="200" value="100" step="10" class="vcin-slider"/>
+          </div>
+          <div class="vcin-dock-group" style="margin-top:8px">
+            <div class="vcin-dock-label">Opacity: <span id="opHexOpacityVal">55</span> %</div>
+            <input type="range" id="opHexOpacitySlider" min="15" max="100" value="55" step="5" class="vcin-slider"/>
+          </div>
+          <div class="vcin-dock-group" style="margin-top:8px">
+            <div class="vcin-dock-label">Color Palette</div>
+            <div class="vcin-palette-options">
+              <button class="vcin-palette-btn active" data-palette="classic" title="Classic Heatmap" style="background:linear-gradient(90deg, #fef08a, #f97316, #ef4444, #a855f7)"></button>
+              <button class="vcin-palette-btn" data-palette="neon" title="Neon Cyber" style="background:linear-gradient(90deg, #06b6d4, #3b82f6, #ec4899, #8b5cf6)"></button>
+              <button class="vcin-palette-btn" data-palette="aubergine" title="Aubergine Glow" style="background:linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #f43f5e)"></button>
+            </div>
+          </div>
+          <button class="vcin-hex-reset-btn" id="opHexResetBtn" style="margin-top:10px;width:100%">Reset Defaults</button>
+        </div>
+      </div>
+
+      <div id="operatorHexMap" class="vcin-op-map"></div>
+
+      <div class="vcin-map-legend">
+        <span><span class="vcin-legend-dot" style="background:#ef4444"></span> High Risk (>0.75)</span>
+        <span><span class="vcin-legend-dot" style="background:#f97316"></span> Warning (>0.55)</span>
+        <span><span class="vcin-legend-dot" style="background:#eab308"></span> Moderate (>0.35)</span>
+        <span><span class="vcin-legend-dot" style="background:#22c55e"></span> Safe</span>
+        <span><span class="vcin-legend-dot" style="background:#1e293b"></span> No Data</span>
+      </div>
+      <div id="hexMapPopup" class="vcin-heatmap-popup hidden"></div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 2: FAST RUNNING CYBER LOG CONSOLE (Full Width) ──────── -->
+  <div class="vcin-fast-logs-card">
+    <div class="vcin-fast-logs-header">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span>💻</span>
+        <span>LIVE CYBER CELL TELEMETRY & REALTIME COMMAND STREAM LOGS</span>
+      </div>
+      <span class="vcin-hud-badge" style="background:rgba(52,211,153,0.15);color:#34d399">AUTO-TICKER ACTIVE</span>
+    </div>
+    <div class="vcin-fast-logs-stream" id="fastCyberLogsStream">
+      <div class="vcin-log-line">
+        <span class="vcin-log-time">[BOOT]</span>
+        <span class="vcin-log-tag">SYSTEM:</span>
+        <span class="vcin-log-msg">Geospatial Command Operations initialized. Standby status active.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 3: BALANCED COMMAND & RADAR DECK (Equal 2-Column Split) ── -->
+  <div class="vcin-op-lower-grid">
+
+    <!-- Left Column: SOS Lighthouse & All-Crimes News Radar -->
+    <div class="vcin-op-lower-col">
+      <div id="tacticalLighthouseContainer"></div>
+      <div id="regionalNewsRadarContainer"></div>
+    </div>
+
+    <!-- Right Column: Multi-Tab Incident & Fleet Command Center -->
+    <div class="vcin-op-sidebar">
+
+      <!-- Navigation Tabs -->
+      <div class="vcin-tabs">
+        <button class="vcin-tab active" id="tabSos"        data-tab="sosFeed">🚨 SOS <span class="vcin-tab-count" id="sosCount">0</span></button>
+        <button class="vcin-tab"        id="tabFleet"      data-tab="fleetFeed">🤝 Fleet <span class="vcin-tab-count" id="fleetCount">0</span></button>
+        <button class="vcin-tab"        id="tabEngines"    data-tab="enginesFeed">⚡ Engines</button>
+        <button class="vcin-tab"        id="tabCall"       data-tab="callFeed">📹 Call <span class="vcin-tab-count" id="callCount">0</span></button>
+        <button class="vcin-tab"        id="tabGH"         data-tab="ghFeed">⚡ Golden <span class="vcin-tab-count" id="ghCount">0</span></button>
+        <button class="vcin-tab"        id="tabComplaints" data-tab="complaintsFeed">📝 Reports <span class="vcin-tab-count" id="complaintsCount">0</span></button>
+      </div>
+
+    <!-- Tab 1: Emergency SOS Feed -->
+    <div id="sosFeed" class="vcin-tab-panel">
+      <div id="pendingApprovalsCard" class="vcin-op-card vcin-op-card-warn" style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h3 style="margin:0;font-size:0.9rem">👥 Connected Room Fleet</h3>
+          <span class="vcin-hud-badge" id="memberCountBadge">0 ACTIVE</span>
+        </div>
+        <div id="membersList" class="vcin-members-list">
+          <p class="vcin-muted">No members connected yet.</p>
+        </div>
+      </div>
+      <div id="alerts">
+        <p class="vcin-muted vcin-empty-state">No active emergency alerts. Cyber cell standing by.</p>
+      </div>
+    </div>
+
+    <!-- Tab 2: Guardian Fleet & Rating Management -->
+    <div id="fleetFeed" class="vcin-tab-panel hidden">
+      <div class="vcin-op-card" style="margin-bottom:12px;background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.3)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <h3 style="margin:0;font-size:0.9rem;color:#34d399">🛡️ Verified Guardian Fleet</h3>
+            <p class="vcin-muted" style="font-size:0.75rem;margin:2px 0 0 0">Real-time Bayesian Civic Trust Score (CTS) Monitoring</p>
+          </div>
+          <button class="vcin-btn-secondary-sm" onclick="triggerSimulatedGuardianJoin()" style="font-size:0.72rem;padding:4px 8px">
+            + Mock Guardian
+          </button>
+        </div>
+      </div>
+      <div id="guardianFleetContainer">
+        <p class="vcin-muted vcin-empty-state">No guardians currently on standby in this tactical room.</p>
+      </div>
+    </div>
+
+    <!-- Tab 3: Dynamic Engine Operations Deck -->
+    <div id="enginesFeed" class="vcin-tab-panel hidden">
+      <!-- 1. CTS Pedestrian Detector Scanner Gate -->
+      <div id="ctsScannerContainer"></div>
+
+      <!-- 2. IRS Quantum Threat Engine Deck -->
+      <div id="irsThreatDeckContainer"></div>
+
+      <!-- 3. Guardian Dispatch Loop -->
+      <div id="guardianPipelineContainer"></div>
+    </div>
+
+    <!-- Tab 4: Merged Dashboard 3-Way Video Conference & Pre-Call Connection Tester -->
+    <div id="callFeed" class="vcin-tab-panel hidden">
+      <!-- Pre-Call Connection & Device Test Card -->
+      <div class="vcin-op-card" style="margin-bottom:12px;background:rgba(15,23,42,0.9);border-color:rgba(56,189,248,0.35)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div>
+            <h3 style="margin:0;font-size:0.95rem;color:#38bdf8">🧪 Pre-Call Device & WebRTC Latency Tester</h3>
+            <p class="vcin-muted" style="font-size:0.75rem;margin:2px 0 0 0">Verify camera, mic level, and STUN/TURN connection before entering conference</p>
+          </div>
+          <span class="vcin-hud-badge" id="opPrecallStatusBadge" style="background:rgba(16,185,129,0.2);color:#34d399">🟢 READY TO TEST</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:center;background:rgba(0,0,0,0.3);padding:10px;border-radius:10px">
+          <div style="width:120px;height:90px;background:#000;border-radius:8px;overflow:hidden;position:relative;border:1px solid rgba(255,255,255,0.1)">
+            <video id="opPrecallVideo" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover"></video>
+            <span style="position:absolute;bottom:4px;left:4px;font-size:0.65rem;background:rgba(0,0,0,0.6);color:#fff;padding:2px 4px;border-radius:4px">Cam Feed</span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;font-size:0.78rem">
+              <span>🎤 Mic Input Level:</span>
+              <strong id="opMicLevelText">0 dB (Silent)</strong>
+            </div>
+            <div style="width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:99px;overflow:hidden">
+              <div id="opMicLevelBar" style="width:0%;height:100%;background:linear-gradient(90deg, #10b981, #f59e0b, #ef4444);transition:width 0.1s ease"></div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.78rem;margin-top:2px">
+              <span>🌐 WebRTC Latency: <strong id="opStunLatencyVal" style="color:#34d399">22ms (STUN OK)</strong></span>
+              <button type="button" class="vcin-btn-primary" style="font-size:0.72rem;padding:4px 10px" onclick="runPrecallConnectionTest()">
+                🧪 Test Connection
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Docked Dashboard 3-Tile Video Grid -->
+      <div class="vcin-op-card" style="padding:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:0.88rem;font-weight:700;color:#38bdf8">📹 Docked 3-Way Conference Stream</span>
+          <div style="display:flex;gap:6px">
+            <button class="vcin-btn-secondary-sm" onclick="toggleDockedVideoMode()" style="font-size:0.72rem;padding:3px 8px">📌 Toggle Float/Dock</button>
+            <button class="vcin-btn-danger-sm" onclick="endJitsi()" style="font-size:0.72rem;padding:3px 8px">📵 End Call</button>
+          </div>
+        </div>
+
+        <div class="vcin-call-grid" style="min-height:220px;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr))">
+          <!-- Tile 1: Victim -->
+          <div class="vcin-video-card vcin-remote-card">
+            <video id="vcinRemoteVideo" autoplay playsinline muted></video>
+            <div class="vcin-video-badge vcin-remote-status">👤 Victim Stream</div>
+          </div>
+          <!-- Tile 2: Operator -->
+          <div class="vcin-video-card">
+            <video id="vcinLocalVideo" autoplay playsinline muted></video>
+            <div class="vcin-video-badge">🖥️ Operator (You)</div>
+          </div>
+          <!-- Tile 3: Guardian -->
+          <div class="vcin-video-card vcin-guardian-card">
+            <video id="vcinGuardianVideo" autoplay playsinline muted></video>
+            <div class="vcin-video-badge" id="vcinGuardianStatus">🛡️ Guardian Stream</div>
+          </div>
+        </div>
+
+        <!-- Call Toolbar -->
+        <div class="vcin-call-controls" style="margin-top:10px">
+          <button class="vcin-call-btn" id="dockMuteMicBtn" onclick="toggleLocalAudio()">🎙️ Mute</button>
+          <button class="vcin-call-btn" id="dockCamOffBtn" onclick="toggleLocalVideo()">📹 Cam Off</button>
+          <button class="vcin-call-btn" id="dockShareScreenBtn" onclick="shareScreen()">📺 Share</button>
+          <button class="vcin-call-btn" onclick="initWebRTC(true)">🔄 Re-Connect</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Golden Hour Case Manager -->
+    <div id="ghFeed" class="vcin-tab-panel hidden">
+      <div id="ghAlerts">
+        <p class="vcin-muted vcin-empty-state">No active Golden Hour cases.</p>
+      </div>
+    </div>
+
+    <!-- Tab 4: Safe Journeys -->
+    <div id="journeysFeed" class="vcin-tab-panel hidden">
+      <div id="journeysList">
+        <p class="vcin-muted vcin-empty-state">No active safe journeys.</p>
+      </div>
+    </div>
+
+    <!-- Tab 5: Evidence Reports Vault -->
+    <div id="complaintsFeed" class="vcin-tab-panel hidden">
+      <div id="complaintsList">
+        <p class="vcin-muted vcin-empty-state">No reports submitted yet.</p>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+</div><!-- /layout -->
+</div><!-- /mainApp -->
+
+<!-- ═════════════════════════════════════════════════════════════
+     OPERATOR GUARDIAN RATING MODAL (Bayesian CTS Engine Integrated)
+══════════════════════════════════════════════════════════════════ -->
+<div id="guardianRatingModal" class="vcin-rating-modal-overlay hidden">
+  <div class="vcin-rating-modal">
+    <button class="vcin-modal-close-btn" onclick="closeGuardianRatingModal()">✕</button>
+
+    <div class="vcin-rating-hero-header">
+      <div style="font-size:2rem;margin-bottom:6px">⭐</div>
+      <div class="vcin-rating-hero-title">Rate Guardian Performance</div>
+      <p class="vcin-muted" style="font-size:0.78rem;margin-top:4px">
+        Evaluating Guardian: <span id="rateGuardianName" class="vcin-rating-target-name">Guardian</span>
+      </p>
+    </div>
+
+    <!-- Star Rating Selector -->
+    <div class="vcin-stars-container">
+      <div class="vcin-star-rating" id="operatorStarRating">
+        <span class="vcin-star" data-val="1">★</span>
+        <span class="vcin-star" data-val="2">★</span>
+        <span class="vcin-star" data-val="3">★</span>
+        <span class="vcin-star" data-val="4">★</span>
+        <span class="vcin-star" data-val="5">★</span>
+      </div>
+    </div>
+    <div id="ratingStarLabel" style="text-align:center;font-weight:700;font-size:0.85rem;color:#fbbf24;margin-bottom:12px">5 Stars — Outstanding Emergency Response</div>
+
+    <!-- Evaluation Tag Chips -->
+    <label class="vcin-label" style="font-size:0.75rem;margin-bottom:6px;display:block">Performance Factors</label>
+    <div class="vcin-rating-tags-grid" id="opRatingTags">
+      <button type="button" class="vcin-tag-chip active" data-tag="Fast Response">⚡ Fast Response (<2 min)</button>
+      <button type="button" class="vcin-tag-chip active" data-tag="Protocol Followed">🎯 Protocol Followed</button>
+      <button type="button" class="vcin-tag-chip active" data-tag="Victim Comforted">🤝 Victim Secured</button>
+      <button type="button" class="vcin-tag-chip" data-tag="Live Video Active">📹 Live Video Used</button>
+      <button type="button" class="vcin-tag-chip negative" data-tag="Delayed Arrival">⏱️ Delayed Arrival</button>
+      <button type="button" class="vcin-tag-chip negative" data-tag="Unresponsive">⚠️ Unresponsive / No-Show</button>
+    </div>
+
+    <!-- Bayesian Calculation Breakdown Preview -->
+    <div class="vcin-cts-calc-preview">
+      <div class="vcin-calc-row">
+        <span style="color:#94a3b8">Current CTS Score:</span>
+        <strong id="ratePrevCTS" style="color:#fff">85</strong>
+      </div>
+      <div class="vcin-calc-row">
+        <span style="color:#94a3b8">Bayesian Belief Adjustment ($\Delta \theta$):</span>
+        <span id="rateCTSDelta" class="vcin-calc-delta-plus">+12 CTS</span>
+      </div>
+      <div class="vcin-calc-row" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:6px;margin-top:6px">
+        <span style="color:#94a3b8">Projected CTS Post-Evaluation:</span>
+        <strong id="rateNewCTS" style="color:#34d399;font-size:0.95rem">97 (CIVIC GUARDIAN)</strong>
+      </div>
+    </div>
+
+    <!-- Optional Notes -->
+    <textarea id="rateGuardianComment" class="vcin-textarea" rows="2" placeholder="Optional operator log / dispatch notes…" style="margin-bottom:14px;font-size:0.8rem"></textarea>
+
+    <button type="button" class="vcin-rating-submit-btn" onclick="submitOperatorGuardianRating()">
+      🔒 Submit Rating & Recalculate CTS
+    </button>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     OPERATOR GUARDIAN CONFERENCE ADMISSION MODAL
+══════════════════════════════════════════════════════════════════ -->
+<div id="guardianConferenceAdmitModal" class="vcin-rating-modal-overlay hidden" style="z-index:1000002;">
+  <div class="vcin-rating-modal vcin-admit-modal-card">
+    <button class="vcin-modal-close-btn" onclick="closeGuardianConferenceAdmitModal()">✕</button>
+
+    <div class="vcin-admit-header">
+      <div class="vcin-admit-icon-badge">🛡️</div>
+      <div class="vcin-admit-title">GUARDIAN ENTRY REQUEST</div>
+      <p class="vcin-muted" style="font-size:0.8rem;margin:4px 0 0 0">
+        A civilian responder is knocking to join the live emergency video conference
+      </p>
+    </div>
+
+    <div class="vcin-admit-guardian-info">
+      <div class="vcin-admit-avatar">🛡️</div>
+      <div class="vcin-admit-meta">
+        <div class="vcin-admit-name" id="admitGuardianName">Guardian Amit</div>
+        <div class="vcin-admit-dist" id="admitGuardianDist">📍 ~0.8 km away · Connaught Place</div>
+        <div class="vcin-admit-cts" id="admitGuardianCTS">🛡️ Verified CTS Trust Score: <strong style="color:#34d399">94% (High Trust)</strong></div>
+      </div>
+    </div>
+
+    <div class="vcin-admit-incident-box" id="admitIncidentBox">
+      <span class="vcin-badge vcin-badge-danger" style="font-size:0.7rem">🚨 LINKED SOS INCIDENT</span>
+      <div id="admitIncidentText" style="font-size:0.8rem;color:#e2e8f0;margin-top:4px">Responding to Priority Distress Beacon</div>
+    </div>
+
+    <div class="vcin-admit-btn-row">
+      <button type="button" class="vcin-btn-admit-accept" id="btnAdmitGuardianAccept" onclick="confirmAdmitGuardian()">
+        ✅ Accept & Admit to Call
+      </button>
+      <button type="button" class="vcin-btn-admit-deny" id="btnAdmitGuardianDeny" onclick="denyGuardianAdmission()">
+        ❌ Deny Entry
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Scripts -->
+<!-- mqtt pinned: unpinned unpkg.com/mqtt resolves to latest and can change
+     between page loads. Bump deliberately after testing. -->
+<script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/h3-js@4.1.0/dist/h3-js.umd.js"></script>
+<script src="https://cdn.ux4g.gov.in/UX4G@3.0.18/ux4g.js" defer></script>
+<script src="https://cdn.ux4g.gov.in/UX4G@3.0.18/ux4g-custom.js" defer></script>
+<script src="sfx.js?v=2.5.0"></script>
+<script src="engines.js?v=2.5.0"></script>
+<script src="engine-visualizers.js?v=2.5.0"></script>
+<script src="cts-engine.js?v=2.5.0"></script>
+<script src="bus.js?v=2.5.0"></script>
+<script src="operator.js?v=3.0.0"></script>
+<script src="nav-switcher.js?v=3.0.0"></script>
+<script src="tour.js?v=1.3.0"></script>
+<script src="sim-engine.js?v=1.0.0"></script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ROOM CODE EXPLANATION MODAL (First-time User - Operator)
+════════════════════════════════════════════════════════════════ -->
+<div id="roomCodeExplanationModal" class="vcin-overlay hidden">
+  <div class="vcin-modal-card vcin-explanation-modal" style="max-width:560px;">
+    <button class="vcin-modal-close" id="closeRoomCodeExplanation">✕</button>
+    
+    <div class="explanation-header">
+      <span class="explanation-icon">🔑</span>
+      <h2>Welcome to V-CIN Operator Dashboard!</h2>
+    </div>
+    
+    <div class="explanation-body">
+      <div class="highlight-box prototype-warning">
+        <span class="warning-icon">⚠️</span>
+        <strong>THIS IS A SIMULATED PROTOTYPE</strong>
+        <p>Please <strong>refresh</strong>, <strong>wait</strong>, <strong>try</strong> — things may need a reload to sync properly.</p>
+      </div>
+      
+      <h3>📱 The 4-Digit Room Code — Critical for Multi-Device Testing</h3>
+      <p>The room code (a random 4-digit code — auto-generated if empty) connects multiple devices into one live simulation room. Here's how to test properly:</p>
+      
+      <div class="device-requirements">
+        <div class="device-row">
+          <span class="device-icon">🖥️</span>
+          <div>
+            <strong>Device 1 — Operator Dashboard (THIS DEVICE)</strong>
+            <p>Open <code>operator.html?pin=1234</code> on a laptop/desktop first. This is the command center.</p>
+          </div>
+        </div>
+        <div class="device-row">
+          <span class="device-icon">📱</span>
+          <div>
+            <strong>Device 2 — Citizen App</strong>
+            <p>Open <code>index.html?pin=1234</code> on a phone. This is the victim/responder.</p>
+          </div>
+        </div>
+        <div class="device-row guardian-row">
+          <span class="device-icon">🛡️</span>
+          <div>
+            <strong>Device 3+ — Guardian App (for Guardian Mode)</strong>
+            <p>Open <code>index.html?pin=1234</code> on additional phones. Enable Guardian Mode in each. <strong>Minimum 3 devices total for Guardian testing.</strong></p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="permissions-box">
+        <h4>🔐 Required Permissions — Allow All</h4>
+        <ul>
+          <li><strong>Location (GPS)</strong> — Required for SOS location, Guardian dispatch, live tracking</li>
+          <li><strong>Microphone</strong> — Required for audio evidence recording (SHA-256 hashed)</li>
+          <li><strong>Camera</strong> — Required for video conference (Jitsi)</li>
+          <li><strong>Notifications</strong> — Required for SOS alerts, Guardian dispatches</li>
+        </ul>
+        <p class="permission-note">Without these, core features won't work. Browser will prompt on first use.</p>
+      </div>
+      
+      <div class="testing-flow">
+        <h4>🧪 Recommended Test Flow</h4>
+        <ol>
+          <li>Open Operator Dashboard first (Device 1) — <strong>You are here</strong></li>
+          <li>Open Citizen App (Device 2) — press SOS</li>
+          <li>Watch Operator Dashboard receive alert</li>
+          <li>Open Guardian App (Device 3) — go on Standby</li>
+          <li>Watch Guardian get dispatched, join video conference</li>
+          <li>Complete mission → see rating → CTS updates</li>
+        </ol>
+      </div>
+      
+      <p class="room-code-tip"><strong>Tip:</strong> Change the room code in the header (top-right PIN badge) to create separate test rooms. Share the same code across devices to join the same room.</p>
+    </div>
+    
+    <div class="explanation-actions">
+      <label class="dont-show-again">
+        <input type="checkbox" id="dontShowRoomExplanation"> Don't show again
+      </label>
+      <button class="vcin-btn-primary" id="gotItRoomExplanation">Got it — Start Testing</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ROOM CODE EXPLANATION MODAL — Show on First Visit (Operator)
+═════════════════════════════════════════════════════════════ */
+(function() {
+  "use strict";
+  const EXPLANATION_KEY = 'vcin-room-explanation-shown';
+  
+  function showExplanationModal() {
+    const modal = document.getElementById('roomCodeExplanationModal');
+    const closeBtn = document.getElementById('closeRoomCodeExplanation');
+    const gotItBtn = document.getElementById('gotItRoomExplanation');
+    const dontShowCheckbox = document.getElementById('dontShowRoomExplanation');
+    
+    if (!modal) return;
+    
+    // Check if already shown and user opted out
+    if (localStorage.getItem(EXPLANATION_KEY) === '1') return;
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    function hideModal() {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+      // Save preference
+      if (dontShowCheckbox.checked) {
+        localStorage.setItem(EXPLANATION_KEY, '1');
+      }
+    }
+    
+    closeBtn?.addEventListener('click', hideModal);
+    gotItBtn?.addEventListener('click', hideModal);
+    
+    // Close on overlay click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) hideModal();
+    });
+    
+    // Close on Escape key
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        hideModal();
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+  }
+  
+  // Show after app is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(showExplanationModal, 1500);
+    });
+  } else {
+    setTimeout(showExplanationModal, 1500);
+  }
+})();
+</script>
+</body>
+</html>

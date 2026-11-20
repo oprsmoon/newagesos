@@ -1,0 +1,10 @@
+{
+  "name": "suraksha-vanilla",
+  "version": "1.0.0",
+  "description": "Suraksha PWA Hackathon Demo",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {}
+}

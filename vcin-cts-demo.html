@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>V-CIN — Civic Trust Scanner Gate (Bayesian Detector)</title>
+<style>
+  :root {
+    --bg-dark: #0a1628;
+    --card-bg: #0f1f3a;
+    --border-color: rgba(0, 217, 255, 0.25);
+    --accent-cyan: #00d9ff;
+    --accent-green: #00ff88;
+    --accent-orange: #ff9800;
+    --text-primary: #f8fafc;
+    --text-muted: #94a3b8;
+  }
+
+  body {
+    background: radial-gradient(circle at top center, #0f1f3a 0%, #0a1628 100%);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+    padding: 24px;
+    box-sizing: border-box;
+    min-height: 100vh;
+  }
+
+  .demo-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .header-card {
+    background: rgba(15, 31, 58, 0.85);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+  }
+
+  .title-group h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--accent-cyan);
+    letter-spacing: 0.5px;
+  }
+
+  .title-group p {
+    margin: 6px 0 0 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn {
+    background: rgba(30, 41, 59, 0.9);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 10px 18px;
+    border-radius: 99px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn:hover {
+    background: #1e293b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(0, 217, 255, 0.3);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    border-color: #38bdf8;
+  }
+
+  .btn-success {
+    background: linear-gradient(135deg, #059669, #047857);
+    border-color: #34d399;
+  }
+
+  .main-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Scanner Canvas Container */
+  .scanner-canvas-wrap {
+    position: relative;
+    width: 100%;
+    height: 260px;
+    background: #060b17;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 217, 255, 0.3);
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .stage-label {
+    position: absolute;
+    top: 12px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    padding: 4px 10px;
+    border-radius: 99px;
+    background: rgba(15, 31, 58, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(6px);
+  }
+
+  .stage-ingestion { left: 20px; color: var(--text-muted); }
+  .stage-gate { left: 50%; transform: translateX(-50%); color: var(--accent-cyan); border-color: var(--accent-cyan); }
+  .stage-verified { right: 20px; color: var(--accent-green); border-color: var(--accent-green); }
+
+  /* Narration Box */
+  .narration-box {
+    background: rgba(2, 132, 199, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    padding: 12px 18px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #e0f2fe;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+  }
+
+  .speaking-pulse {
+    animation: textPulse 1.2s infinite ease-in-out;
+  }
+
+  @keyframes textPulse {
+    0%, 100% { opacity: 1; text-shadow: 0 0 8px rgba(0,217,255,0.6); }
+    50% { opacity: 0.7; text-shadow: none; }
+  }
+
+  /* Guardian Bayesian Cards Grid */
+  .guardians-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  @media (max-width: 768px) {
+    .guardians-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .guardian-card {
+    background: rgba(10, 22, 40, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .guardian-card.winner {
+    border-color: var(--accent-cyan);
+    background: rgba(0, 217, 255, 0.12);
+    box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+    transform: translateY(-2px);
+  }
+
+  .g-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .g-name {
+    font-weight: 800;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .g-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .g-trust-val {
+    font-size: 1.2rem;
+    font-weight: 900;
+    font-family: monospace;
+  }
+
+  .g-formula-str {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: var(--accent-cyan);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 6px 8px;
+    border-radius: 6px;
+  }
+
+  .g-meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .slider-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .slider-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .vcin-slider {
+    width: 100%;
+    height: 5px;
+    border-radius: 5px;
+    background: rgba(255,255,255,0.15);
+    outline: none;
+    accent-color: var(--accent-cyan);
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-container">
+  <!-- Header -->
+  <div class="header-card">
+    <div class="title-group">
+      <h1>Civic Trust Scanner Gate (Bayesian Detector)</h1>
+      <p>Civic Contribution Reliability via Beta(α+α₀, β+β₀) Posterior Estimation [Prior: Beta(1,1) → Beta(9,1)] · vivo Ignite Competition Specification</p>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="startDemo()">▶️ Start Demo</button>
+      <button class="btn" onclick="resetDemo()">🔄 Reset</button>
+      <button class="btn btn-success" id="loopBtn" onclick="toggleLoop()">🔁 Continuous Loop: OFF</button>
+    </div>
+  </div>
+
+  <div class="main-card">
+    <!-- Scope & Reliability Note -->
+    <div style="font-size:0.75rem;color:#38bdf8;background:rgba(15,23,42,0.85);border:1px solid rgba(56,189,248,0.25);padding:8px 14px;border-radius:8px;margin-bottom:12px">
+      ℹ️ <strong>Scope Note:</strong> Evaluates the statistical reliability of civic evidence and contributions, not personal character or personal trustworthiness.
+    </div>
+
+    <!-- Horizontal Pipeline Scanner -->
+    <div class="scanner-canvas-wrap">
+      <canvas id="ctsCanvas"></canvas>
+      <div class="stage-label stage-ingestion">1. Citizen Ingestion</div>
+      <div class="stage-label stage-gate">⚡ 2. SCANNER GATE</div>
+      <div class="stage-label stage-verified">3. Verified Trust Zone</div>
+    </div>
+
+    <!-- TTS Narration Banner -->
+    <div class="narration-box" id="narrationBox">
+      🗣️ <span id="narrationText">Ready to initialize Civic Trust Scanner Gate...</span>
+    </div>
+
+    <!-- Bayesian Guardian Cards -->
+    <div class="guardians-grid">
+      <!-- Raj Card -->
+      <div class="guardian-card" id="card-Raj">
+        <div class="g-card-header">
+          <div class="g-name">
+            <div class="g-dot" style="background:var(--accent-green)"></div>
+            <span>Raj</span>
+          </div>
+          <div class="g-trust-val" style="color:var(--accent-green)" id="trust-Raj">85%</div>
+        </div>
+        <div class="g-formula-str">Beta(17, 4) [Prior: Beta(9,1) → Beta(17,4)]</div>
+        <div class="g-meta-row" style="font-size:0.72rem;color:var(--text-muted)">
+          <span>Verification Signals: DigiLocker (+20) | RWA (+15)</span>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span>Validated Contributions (α)</span><b id="accVal-Raj">16</b></div>
+          <input type="range" min="10" max="25" value="16" class="vcin-slider" style="accent-color:var(--accent-green)" oninput="updateGuardianInput('Raj', 'acc', this.value)"/>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span>Contradicted/False Reports (β)</span><b id="falseVal-Raj">3</b></div>
+          <input type="range" min="0" max="8" value="3" class="vcin-slider" style="accent-color:var(--accent-green)" oninput="updateGuardianInput('Raj', 'falseCount', this.value)"/>
+        </div>
+      </div>
+
+      <!-- Priya Card -->
+      <div class="guardian-card" id="card-Priya">
+        <div class="g-card-header">
+          <div class="g-name">
+            <div class="g-dot" style="background:var(--accent-orange)"></div>
+            <span>Priya</span>
+          </div>
+          <div class="g-trust-val" style="color:var(--accent-orange)" id="trust-Priya">70%</div>
+        </div>
+        <div class="g-formula-str">Beta(13, 6) [Prior: Beta(9,1) → Beta(13,6)]</div>
+        <div class="g-meta-row" style="font-size:0.72rem;color:var(--text-muted)">
+          <span>Verification Signals: DigiLocker (+20) | RWA (+15)</span>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span>Validated Contributions (α)</span><b id="accVal-Priya">12</b></div>
+          <input type="range" min="10" max="25" value="12" class="vcin-slider" style="accent-color:var(--accent-orange)" oninput="updateGuardianInput('Priya', 'acc', this.value)"/>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span>Contradicted/False Reports (β)</span><b id="falseVal-Priya">5</b></div>
+          <input type="range" min="0" max="8" value="5" class="vcin-slider" style="accent-color:var(--accent-orange)" oninput="updateGuardianInput('Priya', 'falseCount', this.value)"/>
+        </div>
+      </div>
+
+      <!-- Amit Card (Winner) -->
+      <div class="guardian-card" id="card-Amit">
+        <div class="g-card-header">
+          <div class="g-name">
+            <div class="g-dot" style="background:var(--accent-cyan)"></div>
+            <span>Amit (Winner)</span>
+          </div>
+          <div class="g-trust-val" style="color:var(--accent-cyan)" id="trust-Amit">92%</div>
+        </div>
+        <div class="g-formula-str">Beta(21, 3) [Prior: Beta(9,1) → Beta(21,3)]</div>
+        <div class="g-meta-row" style="font-size:0.72rem;color:var(--text-muted)">
+          <span>Verification Signals: DigiLocker (+20) | RWA (+15)</span>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span>Validated Contributions (α)</span><b id="accVal-Amit">20</b></div>
+          <input type="range" min="10" max="25" value="20" class="vcin-slider" style="accent-color:var(--accent-cyan)" oninput="updateGuardianInput('Amit', 'acc', this.value)"/>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span>Contradicted/False Reports (β)</span><b id="falseVal-Amit">2</b></div>
+          <input type="range" min="0" max="8" value="2" class="vcin-slider" style="accent-color:var(--accent-cyan)" oninput="updateGuardianInput('Amit', 'falseCount', this.value)"/>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+let canvas = document.getElementById('ctsCanvas');
+let ctx = canvas.getContext('2d');
+let animId = null;
+let isRunning = false;
+let isLooping = false;
+let startTime = 0;
+let progress = 0;
+let stepPassed = [false, false, false, false];
+
+const GUARDIANS = {
+  Raj: { name: 'Raj', color: '#00ff88', acc: 16, falseCount: 3, digilocker: true, rwa: true, yRatio: 0.35, x: 0, opacity: 1 },
+  Priya: { name: 'Priya', color: '#ff9800', acc: 12, falseCount: 5, digilocker: true, rwa: true, yRatio: 0.52, x: 0, opacity: 1 },
+  Amit: { name: 'Amit', color: '#00d9ff', acc: 20, falseCount: 2, digilocker: true, rwa: true, yRatio: 0.69, x: 0, opacity: 1 }
+};
+
+function calculateTrust(acc, falseCount, digi, rwa) {
+  const p = (acc + 1) / (acc + falseCount + 2); // Beta posterior mean
+  const score = Math.round(30 + (digi ? 20 : 0) + (rwa ? 15 : 0) + p * 35);
+  return Math.min(99, score);
+}
+
+function updateGuardianInput(name, key, val) {
+  GUARDIANS[name][key] = parseInt(val);
+  const accEl = document.getElementById(`accVal-${name}`);
+  const falseEl = document.getElementById(`falseVal-${name}`);
+  if (accEl) accEl.textContent = GUARDIANS[name].acc;
+  if (falseEl) falseEl.textContent = GUARDIANS[name].falseCount;
+
+  const trust = calculateTrust(GUARDIANS[name].acc, GUARDIANS[name].falseCount, true, true);
+  const trustEl = document.getElementById(`trust-${name}`);
+  if (trustEl) trustEl.textContent = `${trust}%`;
+}
+
+function speakTTS(text) {
+  if (!('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.05;
+    utterance.volume = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voices.find(v => (v.lang.startsWith('en') || v.lang.includes('IN')) && !v.name.includes('Compact')) || voices[0];
+    if (voice) utterance.voice = voice;
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {}
+}
+
+function toggleLoop() {
+  isLooping = !isLooping;
+  const btn = document.getElementById('loopBtn');
+  btn.textContent = `🔁 Continuous Loop: ${isLooping ? 'ON' : 'OFF'}`;
+  btn.className = `btn ${isLooping ? 'btn-success' : ''}`;
+  if (isLooping && !isRunning) startDemo();
+}
+
+function resetDemo() {
+  isRunning = false;
+  if (animId) cancelAnimationFrame(animId);
+  progress = 0;
+  stepPassed = [false, false, false, false];
+
+  document.querySelectorAll('.guardian-card').forEach(c => c.classList.remove('winner'));
+  document.getElementById('narrationText').textContent = 'Ready to initialize Civic Trust Scanner Gate...';
+  document.getElementById('narrationBox').classList.remove('speaking-pulse');
+
+  Object.keys(GUARDIANS).forEach(k => {
+    GUARDIANS[k].opacity = 1.0;
+    GUARDIANS[k].x = 0;
+  });
+
+  renderFrame(0);
+}
+
+function startDemo() {
+  resetDemo();
+  isRunning = true;
+  startTime = performance.now();
+  runLoop(startTime);
+}
+
+function runLoop(timestamp) {
+  if (!isRunning) return;
+  const elapsed = timestamp - startTime;
+  const duration = 5000; // 5.0 seconds
+  progress = Math.min(1.0, elapsed / duration);
+
+  const narrationText = document.getElementById('narrationText');
+  const narrationBox = document.getElementById('narrationBox');
+
+  // Timeline Step Events
+  if (progress >= 0.02 && !stepPassed[0]) {
+    stepPassed[0] = true;
+    const txt = "SOS received. Computing guardian trust scores...";
+    narrationText.textContent = txt;
+    narrationBox.classList.add('speaking-pulse');
+    speakTTS(txt);
+  } else if (progress >= 0.32 && !stepPassed[1]) {
+    stepPassed[1] = true;
+    const txt = "Bayesian posteriors calculated. Ranking by trustworthiness...";
+    narrationText.textContent = txt;
+    speakTTS(txt);
+  } else if (progress >= 0.62 && !stepPassed[2]) {
+    stepPassed[2] = true;
+    const txt = "Trust scores finalized. Highest ranking guardian advancing...";
+    narrationText.textContent = txt;
+    speakTTS(txt);
+  } else if (progress >= 0.82 && !stepPassed[3]) {
+    stepPassed[3] = true;
+    const txt = "Guardian Amit selected. Trust score: 92%. ETA 4 minutes.";
+    narrationText.textContent = txt;
+    document.getElementById('card-Amit').classList.add('winner');
+    speakTTS(txt);
+  }
+
+  renderFrame(progress);
+
+  if (progress < 1.0) {
+    animId = requestAnimationFrame(runLoop);
+  } else {
+    isRunning = false;
+    narrationBox.classList.remove('speaking-pulse');
+    if (isLooping) {
+      setTimeout(startDemo, 1200);
+    }
+  }
+}
+
+function drawStickFigure(ctx, x, y, color, opacity, isWinner) {
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 2.5;
+
+  // Head
+  ctx.beginPath();
+  ctx.arc(x, y - 22, 7, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body
+  ctx.beginPath();
+  ctx.moveTo(x, y - 15);
+  ctx.lineTo(x, y + 6);
+  ctx.stroke();
+
+  // Arms
+  const armAngle = Math.sin(Date.now() * 0.01 + x) * 0.4;
+  ctx.beginPath();
+  ctx.moveTo(x - 10, y - 8 + armAngle * 5);
+  ctx.lineTo(x + 10, y - 8 - armAngle * 5);
+  ctx.stroke();
+
+  // Legs
+  const legAngle = Math.sin(Date.now() * 0.015 + x) * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 6);
+  ctx.lineTo(x - 8 + legAngle * 6, y + 22);
+  ctx.moveTo(x, y + 6);
+  ctx.lineTo(x + 8 - legAngle * 6, y + 22);
+  ctx.stroke();
+
+  // Halo if winner in stage 3
+  if (isWinner) {
+    ctx.strokeStyle = '#00d9ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y - 22, 13 + Math.sin(Date.now() * 0.01) * 3, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#00d9ff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('WINNER 92%', x, y - 38);
+  }
+
+  ctx.restore();
+}
+
+function renderFrame(prog) {
+  const w = canvas.width = canvas.offsetWidth || 1000;
+  const h = canvas.height = canvas.offsetHeight || 260;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Stage boundaries (3 equal vertical sections)
+  const s1W = w * 0.33;
+  const s2W = w * 0.66;
+
+  // Background Grid Lines
+  ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < w; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+
+  // Stage Dividers
+  ctx.strokeStyle = 'rgba(0, 217, 255, 0.2)';
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(s1W, 0); ctx.lineTo(s1W, h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(s2W, 0); ctx.lineTo(s2W, h); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Center Scanner Gate Arch & Laser (around s1W to s2W center)
+  const gateCenterX = (s1W + s2W) / 2;
+  const gateY = h - 30;
+  const gateWidth = 44;
+  const gateHeight = 160;
+
+  // Gate Frame
+  ctx.fillStyle = 'rgba(0, 217, 255, 0.4)';
+  ctx.fillRect(gateCenterX - gateWidth/2, gateY - gateHeight, 6, gateHeight);
+  ctx.fillRect(gateCenterX + gateWidth/2 - 6, gateY - gateHeight, 6, gateHeight);
+  ctx.fillRect(gateCenterX - gateWidth/2, gateY - gateHeight, gateWidth, 8);
+
+  // Vertical Scanning Laser Line
+  const laserY = (gateY - gateHeight + 10) + ((Date.now() * 0.1) % (gateHeight - 20));
+  ctx.strokeStyle = '#00ff88';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(gateCenterX - gateWidth/2 + 6, laserY);
+  ctx.lineTo(gateCenterX + gateWidth/2 - 6, laserY);
+  ctx.stroke();
+
+  // Position calculations based on timeline
+  // 0 - 30%: Move from x=40 to Stage 1 (s1W * 0.8)
+  // 30 - 60%: Move through Scanner Gate (s1W * 0.8 to s2W * 0.5)
+  // 60 - 80%: Amit accelerates to Verified Zone (w * 0.85), others slow and fade opacity to 0.35
+  // 80 - 100%: Amit locked in Verified Zone with glowing halo
+
+  const gKeys = ['Raj', 'Priya', 'Amit'];
+
+  gKeys.forEach((key, idx) => {
+    const g = GUARDIANS[key];
+    const yPos = h * g.yRatio;
+
+    if (prog < 0.30) {
+      // Stage 1: Ingestion
+      const p1 = prog / 0.30;
+      g.x = 40 + p1 * (s1W * 0.8 - 40);
+      g.opacity = 1.0;
+    } else if (prog < 0.60) {
+      // Stage 2: Scanner Gate
+      const p2 = (prog - 0.30) / 0.30;
+      g.x = (s1W * 0.8) + p2 * ((s1W + s2W)/2 - (s1W * 0.8));
+      g.opacity = 1.0;
+    } else if (prog < 0.80) {
+      // Stage 3: Split - Amit accelerates, others slow & fade
+      const p3 = (prog - 0.60) / 0.20;
+      if (key === 'Amit') {
+        g.x = ((s1W + s2W)/2) + p3 * (w * 0.82 - (s1W + s2W)/2);
+        g.opacity = 1.0;
+      } else {
+        g.x = ((s1W + s2W)/2) + p3 * 20;
+        g.opacity = 1.0 - p3 * 0.65; // Fade to 0.35
+      }
+    } else {
+      // Final locked state
+      if (key === 'Amit') {
+        g.x = w * 0.82;
+        g.opacity = 1.0;
+      } else {
+        g.opacity = 0.35;
+      }
+    }
+
+    drawStickFigure(ctx, g.x, yPos, g.color, g.opacity, (key === 'Amit' && prog >= 0.75));
+  });
+}
+
+// Initial draw on load
+window.addEventListener('load', () => renderFrame(0));
+</script>
+</body>
+</html>

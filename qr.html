@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V-CIN Suraksha — The Signal Hub (Room QR)</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Fonts: Noir Comic & Modern -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600&family=Bangers&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#0a0a0d;
+      --paper:#e9e3d4;
+      --paper-dim:#dcd4bf;
+      --amber:#e8a33d;
+      --amber-hot:#ffbf5c;
+      --red:#d81e2c;
+      --red-dark:#8f0f1a;
+      --dusk:#2f4256;
+      --dusk-deep:#182533;
+      --cyan:#3ec6e0;
+      --yellow:#f5d90a;
+    }
+
+    *{box-sizing:border-box;}
+    html{scroll-behavior:smooth;}
+
+    body.vcin-noir-body{
+      background:var(--paper);
+      color:var(--ink);
+      font-family:'Archivo',sans-serif;
+      overflow-x:hidden;
+      overflow-x:clip;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      background-image:
+        radial-gradient(circle, rgba(10,10,13,0.07) 1px, transparent 1px),
+        radial-gradient(circle, rgba(216,30,44,0.03) 1px, transparent 1px);
+      background-size: 6px 6px, 11px 11px;
+      background-position: 0 0, 3px 4px;
+    }
+    body.vcin-noir-body ::selection{background:var(--red); color:var(--paper);}
+
+    .display{font-family:'Anton',sans-serif; text-transform:uppercase; letter-spacing:0.5px;}
+
+    .caption-box{
+      background:var(--paper);
+      color:var(--ink);
+      border:2px solid var(--ink);
+      padding:6px 12px;
+      font-weight:700;
+      font-style:italic;
+      font-size:0.78rem;
+      letter-spacing:0.3px;
+      box-shadow:3px 3px 0 var(--ink);
+      display:inline-block;
+    }
+    .halftone{
+      position:absolute; inset:0;
+      background-image: radial-gradient(circle, rgba(10,10,13,0.35) 1.4px, transparent 1.4px);
+      background-size: 5px 5px;
+      mix-blend-mode:multiply;
+      pointer-events:none;
+      opacity:0.35;
+      animation:noir-halftone-drift 14s linear infinite;
+    }
+    @keyframes noir-halftone-drift{
+      from{background-position:0 0;}
+      to{background-position:60px 60px;}
+    }
+
+    .ambient-burst{
+      position:absolute;
+      z-index:2;
+      pointer-events:none;
+      opacity:0.9;
+      animation:float-bob 6s ease-in-out infinite;
+    }
+    .ambient-burst svg{width:100%;height:100%;}
+    .ambient-burst span{
+      position:absolute; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Bangers',cursive;
+      font-size:0.95rem;
+      color:var(--paper);
+      transform:rotate(-12deg);
+      text-shadow:2px 2px 0 var(--ink);
+    }
+    @keyframes float-bob{
+      0%,100%{transform:translateY(0) rotate(-3deg);}
+      50%{transform:translateY(-16px) rotate(3deg);}
+    }
+
+    .qr-stage{
+      flex:1;
+      position:relative;
+      padding:48px 20px 60px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      overflow:hidden;
+    }
+    .qr-speedlines{
+      position:absolute; inset:0;
+      pointer-events:none;
+      background: repeating-conic-gradient(from 0deg at 50% 40%, rgba(10,10,13,0.05) 0deg 0.7deg, transparent 0.7deg 5deg);
+      opacity:0.5;
+    }
+
+    /* main comic panel card */
+    .qr-panel{
+      position:relative;
+      z-index:3;
+      width:100%;
+      max-width:520px;
+      background:linear-gradient(165deg, #101820, #1c2b3a 62%, #24384a);
+      color:var(--paper);
+      border:4px solid var(--ink);
+      box-shadow:10px 10px 0 var(--ink);
+      padding:34px 28px 30px;
+      text-align:center;
+      animation:panel-float 7s ease-in-out infinite;
+      overflow:hidden;
+    }
+    @keyframes panel-float{
+      0%,100%{transform:translateY(0) rotate(0.4deg);}
+      50%{transform:translateY(-8px) rotate(-0.4deg);}
+    }
+    .qr-panel > *{position:relative; z-index:2;}
+
+    .qr-issue-tag{
+      margin-bottom:18px;
+      transform:rotate(-1deg);
+      animation:caption-slam 0.7s cubic-bezier(0.16,1.3,0.3,1) both 0.15s;
+    }
+    @keyframes caption-slam{
+      from{opacity:0; transform:scale(1.6) rotate(-4deg);}
+      to{opacity:1; transform:scale(1) rotate(-1deg);}
+    }
+    .qr-title{
+      font-family:'Anton',sans-serif;
+      font-size:clamp(1.9rem, 5vw, 2.6rem);
+      line-height:0.98;
+      text-transform:uppercase;
+      color:var(--paper);
+      text-shadow:3px 3px 0 var(--red-dark);
+      margin:0 0 10px;
+    }
+    .qr-title .accent{
+      color:var(--yellow);
+      text-shadow:3px 3px 0 var(--ink);
+      display:inline-block;
+      animation:accent-punch 3s ease-in-out infinite;
+    }
+    @keyframes accent-punch{
+      0%,88%,100%{transform:scale(1) rotate(0deg);}
+      91%{transform:scale(1.07) rotate(-1.5deg);}
+      94%{transform:scale(1.03) rotate(1deg);}
+    }
+    .qr-sub{
+      color:var(--paper-dim);
+      font-size:0.92rem;
+      font-weight:500;
+      line-height:1.5;
+      margin:0 auto 26px;
+      max-width:38ch;
+    }
+
+    /* QR frame — white evidence panel with corner marks */
+    .qr-img-frame{
+      position:relative;
+      background:#ffffff;
+      border:3px solid var(--ink);
+      box-shadow:6px 6px 0 var(--ink);
+      padding:18px;
+      width:fit-content;
+      margin:0 auto 22px;
+      transition:transform 0.25s cubic-bezier(0.16,1.4,0.3,1);
+    }
+    .qr-img-frame:hover{transform:scale(1.04) rotate(-1deg);}
+    .qr-img-frame::before,
+    .qr-img-frame::after{
+      content:"";
+      position:absolute;
+      width:22px; height:22px;
+      border:3px solid var(--red);
+    }
+    .qr-img-frame::before{top:-9px; left:-9px; border-right:none; border-bottom:none;}
+    .qr-img-frame::after{bottom:-9px; right:-9px; border-left:none; border-top:none;}
+    .qr-img-frame img{
+      width:230px;
+      height:230px;
+      display:block;
+      image-rendering:pixelated;
+    }
+    .qr-scanline{
+      position:absolute;
+      left:8%; right:8%;
+      height:3px;
+      background:linear-gradient(90deg, transparent, var(--red), transparent);
+      top:12%;
+      animation:scan-sweep 2.6s ease-in-out infinite;
+      pointer-events:none;
+      opacity:0.85;
+      z-index:3;
+    }
+    @keyframes scan-sweep{
+      0%,100%{top:12%;}
+      50%{top:86%;}
+    }
+    .qr-frame-caption{
+      margin-top:-14px;
+      margin-bottom:24px;
+      transform:rotate(-1deg);
+    }
+
+    /* PIN hero badge */
+    .qr-pin-hero{
+      font-family:'JetBrains Mono',monospace;
+      font-size:1.05rem;
+      font-weight:800;
+      letter-spacing:3px;
+      color:var(--paper);
+      background:var(--red);
+      border:3px solid var(--ink);
+      box-shadow:4px 4px 0 var(--ink);
+      padding:10px 22px;
+      display:inline-block;
+      margin-bottom:26px;
+      animation:pin-throb 2.4s ease-in-out infinite;
+    }
+    @keyframes pin-throb{
+      0%,100%{transform:scale(1) rotate(-1deg); box-shadow:4px 4px 0 var(--ink);}
+      50%{transform:scale(1.04) rotate(1deg); box-shadow:4px 4px 0 var(--ink), 0 0 0 6px rgba(216,30,44,0.35);}
+    }
+
+    /* PIN input row */
+    .qr-pin-input-group{
+      display:flex;
+      gap:10px;
+      width:100%;
+      max-width:360px;
+      margin:0 auto 24px;
+    }
+    .qr-pin-input-group input{
+      flex:1;
+      min-width:0;
+      background:var(--paper);
+      border:3px solid var(--ink);
+      box-shadow:inset 2px 2px 0 rgba(10,10,13,0.15);
+      padding:10px 14px;
+      color:var(--ink);
+      font-size:1.05rem;
+      font-family:'JetBrains Mono',monospace;
+      font-weight:700;
+      text-align:center;
+      letter-spacing:3px;
+    }
+    .qr-pin-input-group input:focus{
+      outline:3px solid var(--amber-hot);
+      outline-offset:1px;
+    }
+    .qr-pin-input-group button{
+      font-family:'Anton',sans-serif;
+      font-size:0.85rem;
+      letter-spacing:0.6px;
+      background:var(--yellow);
+      color:var(--ink);
+      border:3px solid var(--ink);
+      box-shadow:3px 3px 0 var(--ink);
+      padding:10px 16px;
+      cursor:pointer;
+      white-space:nowrap;
+      transition:transform 0.1s ease, box-shadow 0.1s ease;
+    }
+    .qr-pin-input-group button:hover{transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--ink);}
+    .qr-pin-input-group button:active{transform:translate(1px,1px); box-shadow:1px 1px 0 var(--ink);}
+
+    /* action stack */
+    .qr-actions-stack{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      width:100%;
+      max-width:360px;
+      margin:0 auto;
+    }
+    .btn-noir{
+      font-family:'Anton',sans-serif;
+      letter-spacing:0.6px;
+      font-size:0.9rem;
+      padding:13px 22px;
+      border:3px solid var(--ink);
+      cursor:pointer;
+      text-decoration:none;
+      display:inline-block;
+      text-align:center;
+      transition:transform 0.12s ease, box-shadow 0.12s ease;
+      box-shadow:4px 4px 0 var(--ink);
+      position:relative;
+      overflow:hidden;
+      background:var(--paper);
+      color:var(--ink);
+    }
+    .btn-noir::before{
+      content:"";
+      position:absolute; top:0; left:-80%;
+      width:50%; height:100%;
+      background:linear-gradient(105deg, transparent, rgba(255,255,255,0.5), transparent);
+      transform:skewX(-20deg);
+      animation:btn-shine 3.4s ease-in-out infinite;
+    }
+    @keyframes btn-shine{
+      0%,60%{left:-80%;}
+      80%,100%{left:140%;}
+    }
+    .btn-noir:hover{transform:translate(-2px,-2px); box-shadow:7px 7px 0 var(--ink);}
+    .btn-noir:active{transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink);}
+    .btn-primary-noir{background:var(--red); color:var(--paper);}
+    .btn-cyan-noir{background:var(--cyan); color:var(--ink);}
+
+    /* marquee footer strip */
+    .marquee-strip{
+      background:var(--amber);
+      border-top:4px solid var(--ink);
+      overflow:hidden;
+      white-space:nowrap;
+      padding:10px 0;
+      transform:rotate(-0.6deg) scale(1.02);
+    }
+    .marquee-strip .track{
+      display:inline-block;
+      animation:scroll-left 22s linear infinite;
+      font-family:'Anton',sans-serif;
+      font-size:0.95rem;
+      letter-spacing:1px;
+    }
+    .marquee-strip .track span{margin:0 22px;}
+    .marquee-strip .track span:nth-child(even){
+      color:var(--red-dark);
+      animation:ticker-flash 1.4s steps(2,end) infinite;
+    }
+    @keyframes ticker-flash{50%{opacity:0.45;}}
+    @keyframes scroll-left{
+      from{transform:translateX(0);}
+      to{transform:translateX(-50%);}
+    }
+
+    footer.noir-footer{
+      background:var(--ink);
+      color:var(--paper-dim);
+      border-top:4px solid var(--red);
+      padding:22px 5vw;
+      text-align:center;
+      font-size:0.78rem;
+      font-family:'JetBrains Mono',monospace;
+      letter-spacing:1px;
+      text-transform:uppercase;
+    }
+
+    @media (max-width:480px){
+      .qr-panel{padding:28px 18px 24px;}
+      .qr-pin-input-group{flex-direction:column;}
+      .ambient-burst{display:none;}
+    }
+  </style>
+</head>
+<body class="vcin-noir-body">
+
+  <main class="qr-stage">
+    <div class="qr-speedlines" aria-hidden="true"></div>
+
+    <!-- ambient bursts -->
+    <div class="ambient-burst" style="left:8%; top:16%; width:92px; height:92px;" aria-hidden="true">
+      <svg viewBox="0 0 100 100"><polygon points="50,2 58,22 76,10 72,32 96,34 76,48 90,66 66,60 64,86 50,68 36,86 34,60 10,66 24,48 4,34 28,32 24,10 42,22" fill="#f5d90a" stroke="#0a0a0d" stroke-width="3"/></svg>
+      <span>SCAN!</span>
+    </div>
+    <div class="ambient-burst" style="right:8%; bottom:14%; width:80px; height:80px; animation-delay:1.2s;" aria-hidden="true">
+      <svg viewBox="0 0 100 100"><polygon points="50,2 58,22 76,10 72,32 96,34 76,48 90,66 66,60 64,86 50,68 36,86 34,60 10,66 24,48 4,34 28,32 24,10 42,22" fill="#d81e2c" stroke="#0a0a0d" stroke-width="3"/></svg>
+      <span>JOIN!</span>
+    </div>
+
+    <div class="qr-panel">
+      <div class="halftone" aria-hidden="true"></div>
+
+      <div class="caption-box qr-issue-tag">ISSUE #02 — THE SIGNAL HUB</div>
+      <h1 class="qr-title">SCAN TO JOIN<br>THE <span class="accent">NETWORK</span></h1>
+      <p class="qr-sub">Point any smartphone camera at the panel below to enter the live simulation room — citizen, guardian and operator devices sync instantly.</p>
+
+      <div class="qr-img-frame">
+        <img id="primaryQrImg" src="" alt="Room QR Code" />
+        <div class="qr-scanline" aria-hidden="true"></div>
+      </div>
+      <div class="qr-frame-caption"><span class="caption-box">EXHIBIT A — ROOM ENTRY SIGNAL</span></div>
+
+      <div class="qr-pin-hero">PIN: <span id="activePinDisplay">1234</span></div>
+
+      <div class="qr-pin-input-group">
+        <input type="text" id="qrPinInput" value="1234" maxlength="8" placeholder="e.g. 1234" />
+        <button id="qrUpdatePinBtn" class="">UPDATE PIN</button>
+      </div>
+
+      <div class="qr-actions-stack">
+        <button id="qrCopyLinkBtn" class="btn-noir btn-primary-noir">
+          📋 COPY DIRECT ROOM LINK
+        </button>
+        <a id="qrOpenCitizenLink" href="index.html" class="btn-noir">
+          🛡️ OPEN CITIZEN APP
+        </a>
+        <a id="qrOpenOperatorLink" href="operator.html" class="btn-noir btn-cyan-noir">
+          🖥️ OPEN OPERATOR DESK
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- marquee strip -->
+  <div class="marquee-strip" aria-hidden="true">
+    <div class="track">
+      <span>SAME ROOM</span><span>★</span><span>LIVE SYNC</span><span>★</span><span>CITIZEN + GUARDIAN + OPERATOR</span><span>★</span><span>GOLDEN HOUR GRID</span><span>★</span>
+      <span>SAME ROOM</span><span>★</span><span>LIVE SYNC</span><span>★</span><span>CITIZEN + GUARDIAN + OPERATOR</span><span>★</span><span>GOLDEN HOUR GRID</span><span>★</span>
+    </div>
+  </div>
+
+  <footer class="noir-footer">
+    V-CIN Suraksha · Room QR Code Synchronization Hub
+  </footer>
+
+  <!-- Scripts -->
+  <script src="sfx.js"></script>
+  <script src="nav-switcher.js"></script>
+  <script>
+    let activePin = '1234';
+
+    function getQrImageUrl(dataUrl) {
+      return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(dataUrl)}`;
+    }
+
+    function setupQrFailover(imgElement, dataUrl) {
+      if (!imgElement) return;
+      imgElement.src = getQrImageUrl(dataUrl);
+
+      imgElement.onerror = () => {
+        imgElement.src = `https://quickchart.io/qr?size=260&text=${encodeURIComponent(dataUrl)}`;
+        imgElement.onerror = () => {
+          imgElement.src = `https://chart.googleapis.com/chart?cht=qr&chs=260x260&chl=${encodeURIComponent(dataUrl)}`;
+        };
+      };
+    }
+
+    function getTargetUrl(targetPage, pin) {
+      let origin = window.location.origin;
+      if (!origin || origin === 'null' || origin.startsWith('file')) {
+        origin = 'http://localhost:8080';
+      }
+      let path = window.location.pathname || '/';
+      if (path.endsWith('/') || path === '') {
+        path = path + targetPage;
+      } else if (/landing\.html|operator\.html|index\.html|qr\.html|overview\.html$/i.test(path)) {
+        path = path.replace(/landing\.html|operator\.html|index\.html|qr\.html|overview\.html$/i, targetPage);
+      } else {
+        path = path.replace(/\/+$/, '') + '/' + targetPage;
+      }
+      return `${origin}${path}?pin=${encodeURIComponent(pin)}`;
+    }
+
+    function updateRoomPin(pin) {
+      const cleanPin = pin.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') || '1234';
+      activePin = cleanPin;
+      localStorage.setItem('suraksha-room', cleanPin);
+
+      document.getElementById('activePinDisplay').textContent = cleanPin;
+      document.getElementById('qrPinInput').value = cleanPin;
+
+      const citizenUrl = getTargetUrl('index.html', cleanPin);
+      const operatorUrl = getTargetUrl('operator.html', cleanPin);
+
+      setupQrFailover(document.getElementById('primaryQrImg'), citizenUrl);
+
+      document.getElementById('qrOpenCitizenLink').href = citizenUrl;
+      document.getElementById('qrOpenOperatorLink').href = operatorUrl;
+
+      const navPin = document.getElementById('navPinDisplay');
+      if (navPin) navPin.textContent = cleanPin;
+    }
+
+    document.getElementById('qrUpdatePinBtn').onclick = () => {
+      const val = document.getElementById('qrPinInput').value;
+      if (typeof SFX !== 'undefined') SFX.click();
+      updateRoomPin(val);
+    };
+
+    document.getElementById('qrCopyLinkBtn').onclick = () => {
+      const citizenUrl = getTargetUrl('index.html', activePin);
+      navigator.clipboard.writeText(citizenUrl).then(() => {
+        const btn = document.getElementById('qrCopyLinkBtn');
+        btn.textContent = '✅ LINK COPIED!';
+        if (typeof SFX !== 'undefined') SFX.click();
+        setTimeout(() => { btn.textContent = '📋 COPY DIRECT ROOM LINK'; }, 2000);
+      });
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedPin = (localStorage.getItem('suraksha-room') || '1234').trim();
+      updateRoomPin(savedPin);
+    });
+  </script>
+</body>
+</html>

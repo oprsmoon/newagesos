@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 570 500" width="100%" height="100%">
+  <defs>
+    <!-- Light Beam Gradient -->
+    <linearGradient id="beamLeft" x1="100%" y1="50%" x2="0%" y2="50%">
+      <stop offset="0%" stop-color="#22c55e" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#22c55e" stop-opacity="0.2"/>
+    </linearGradient>
+    <linearGradient id="beamRight" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#22c55e" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#22c55e" stop-opacity="0.2"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    .vcin-beam-left { animation: beamPulseLeft 3s ease-in-out infinite alternate; }
+    .vcin-beam-right { animation: beamPulseRight 3s ease-in-out infinite alternate; }
+    .vcin-shield-check { animation: checkPulse 2s ease-in-out infinite; }
+    @keyframes beamPulseLeft {
+      0% { opacity: 0.6; transform: scaleX(0.95); }
+      100% { opacity: 1; transform: scaleX(1.05); }
+    }
+    @keyframes beamPulseRight {
+      0% { opacity: 1; transform: scaleX(1.05); }
+      100% { opacity: 0.6; transform: scaleX(0.95); }
+    }
+    @keyframes checkPulse {
+      0%, 100% { filter: drop-shadow(0 0 2px rgba(34,197,94,0.5)); }
+      50% { filter: drop-shadow(0 0 8px rgba(34,197,94,0.9)); }
+    }
+  </style>
+
+  <!-- Outer Red Ring Arc -->
+  <path d="M 155 220 A 130 130 0 1 1 415 220" fill="none" stroke="#dc2626" stroke-width="14" stroke-linecap="round"/>
+
+  <!-- Left Green Light Beam -->
+  <polygon points="250,130 125,110 125,150" fill="url(#beamLeft)" class="vcin-beam-left"/>
+
+  <!-- Right Green Light Beam -->
+  <polygon points="320,130 445,110 445,150" fill="url(#beamRight)" class="vcin-beam-right"/>
+
+  <!-- Lighthouse Structure -->
+  <!-- Top Spire & Cupola -->
+  <path d="M 285 65 L 279 80 L 291 80 Z" fill="#0d1b2e"/>
+  <rect x="273" y="80" width="24" height="6" fill="#0d1b2e" rx="2"/>
+  <!-- Lantern Room -->
+  <rect x="275" y="86" width="20" height="24" fill="#ffffff" stroke="#0d1b2e" stroke-width="3"/>
+  <line x1="285" y1="86" x2="285" y2="110" stroke="#0d1b2e" stroke-width="2"/>
+  <rect x="269" y="110" width="32" height="6" fill="#0d1b2e" rx="2"/>
+
+  <!-- Tower Body -->
+  <path d="M 273 116 L 260 240 L 310 240 L 297 116 Z" fill="#0d1b2e"/>
+  <!-- White Curved Stripes -->
+  <path d="M 271 140 Q 285 148 299 140 L 296 165 Q 285 173 274 165 Z" fill="#ffffff"/>
+  <path d="M 267 190 Q 285 198 303 190 L 301 215 Q 285 223 269 215 Z" fill="#ffffff"/>
+  <!-- Window -->
+  <path d="M 281 125 A 4 4 0 0 1 289 125 L 289 135 L 281 135 Z" fill="#ffffff"/>
+
+  <!-- Left Figure (Green) -->
+  <circle cx="230" cy="235" r="16" fill="#16a34a"/>
+  <path d="M 210 275 C 210 250, 250 250, 250 275 Z" fill="#16a34a"/>
+
+  <!-- Right Figure (Red) -->
+  <circle cx="340" cy="235" r="16" fill="#dc2626"/>
+  <path d="M 320 275 C 320 250, 360 250, 360 275 Z" fill="#dc2626"/>
+
+  <!-- Center Figure (Navy Blue) -->
+  <circle cx="285" cy="215" r="20" fill="#0d1b2e"/>
+  <path d="M 257 275 C 257 240, 313 240, 313 275 Z" fill="#0d1b2e"/>
+
+  <!-- Center Shield (Green) -->
+  <path d="M 265 270 C 265 310, 285 325, 285 325 C 285 325, 305 310, 305 270 L 305 260 L 265 260 Z" fill="#16a34a" stroke="#ffffff" stroke-width="3" class="vcin-shield-check"/>
+  <!-- White Checkmark -->
+  <path d="M 275 288 L 282 296 L 296 278" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Protective Navy Hands -->
+  <path d="M 155 210 C 145 260, 175 315, 255 325 C 205 310, 175 270, 175 230 Z" fill="#0d1b2e"/>
+  <path d="M 415 210 C 425 260, 395 315, 315 325 C 365 310, 395 270, 395 230 Z" fill="#0d1b2e"/>
+
+  <!-- Outer Caring Hands Base -->
+  <path d="M 160 205 C 140 260, 180 328, 285 328 C 390 328, 430 260, 410 205 C 400 240, 370 305, 285 305 C 200 305, 170 240, 160 205 Z" fill="#0d1b2e"/>
+
+  <!-- Typography: VCiN -->
+  <g transform="translate(35, 340)">
+    <!-- Letter V (Red) -->
+    <path d="M 105 10 L 140 95 L 165 95 L 200 10 L 170 10 L 152 65 L 135 10 Z" fill="#dc2626"/>
+
+    <!-- Letter C (Navy Blue) -->
+    <path d="M 270 22 C 255 8, 230 8, 215 22 C 198 38, 198 68, 215 84 C 230 98, 255 98, 270 84 L 252 68 C 244 76, 232 76, 226 68 C 218 58, 218 48, 226 38 C 232 30, 244 30, 252 38 Z" fill="#0d1b2e"/>
+
+    <!-- Letter i (Navy Blue with Green Dot) -->
+    <rect x="290" y="32" width="22" height="63" fill="#0d1b2e" rx="3"/>
+    <rect x="290" y="10" width="22" height="16" fill="#16a34a" rx="3"/>
+
+    <!-- Letter N (Navy Blue) -->
+    <path d="M 330 10 L 330 95 L 355 95 L 385 40 L 385 95 L 410 95 L 410 10 L 385 10 L 355 65 L 355 10 Z" fill="#0d1b2e"/>
+  </g>
+
+  <!-- Tagline: — VERIFY • CONNECT • PROTECT — -->
+  <g transform="translate(10, 470)">
+    <line x1="20" y1="-8" x2="50" y2="-8" stroke="#0d1b2e" stroke-width="3" stroke-linecap="round"/>
+
+    <text x="62" y="0" font-family="'Inter', 'Space Grotesk', sans-serif" font-weight="800" font-size="20" fill="#dc2626" letter-spacing="3">VERIFY</text>
+
+    <circle cx="165" cy="-6" r="4" fill="#0d1b2e"/>
+
+    <text x="180" y="0" font-family="'Inter', 'Space Grotesk', sans-serif" font-weight="800" font-size="20" fill="#0d1b2e" letter-spacing="3">CONNECT</text>
+
+    <circle cx="312" cy="-6" r="4" fill="#0d1b2e"/>
+
+    <text x="328" y="0" font-family="'Inter', 'Space Grotesk', sans-serif" font-weight="800" font-size="20" fill="#16a34a" letter-spacing="3">PROTECT</text>
+
+    <line x1="450" y1="-8" x2="480" y2="-8" stroke="#0d1b2e" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>
